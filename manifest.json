@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "UIH Data Copier (v3.6 Pro)",
+  "version": "3.6",
+  "description": "ตัวช่วยคัดลอกข้อมูลจาก SalesWiz ไป CostSheet (Popup + Options)",
+
+  "options_page": "options.html",
+
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs",
+    "alarms",
+    "clipboardWrite"
+  ],
+
+  "host_permissions": [
+    "https://saleswiz.uih.co.th/*",
+    "https://costsheet.uih.co.th/*"
+  ],
+
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "UIH Data Copier",
+    "default_icon": "icon.png"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["https://costsheet.uih.co.th/*"],
+      "js": ["login_manager.js", "costsheet_writer.js"]
+    },
+    {
+      "matches": ["https://saleswiz.uih.co.th/*"],
+      "js": ["login_manager.js"]
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { width: 300px; font-family: 'Segoe UI', sans-serif; padding: 15px; text-align: center; color: #333; }
+    h3 { margin: 0 0 5px 0; font-size: 16px; }
+
+    .status { font-size: 12px; color: #666; margin-bottom: 10px; }
+
+    .card {
+      background: #f8f9fa;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 10px;
+      text-align: left;
+    }
+
+    .label { font-size: 11px; color: #888; font-weight: bold; margin-bottom: 4px; }
+    .value { font-size: 14px; font-weight: bold; color: #007bff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .note-box {
+      width: 100%;
+      box-sizing: border-box;
+      margin-top: 6px;
+      padding: 6px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      font-size: 12px;
+      resize: vertical;
+      min-height: 60px;
+      max-height: 140px;
+    }
+
+    button {
+      width: 100%;
+      padding: 8px;
+      margin: 4px 0;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: bold;
+      color: white;
+      transition: 0.2s;
+    }
+    button:hover { opacity: 0.9; }
+
+    .btn-copy   { background-color: #007bff; }
+    .btn-delete { background-color: #dc3545; margin-top: 6px; }
+    .btn-note-save { background-color: #6c757d; }
+    .btn-note-ai   { background-color: #17a2b8; }
+
+    .hidden { display: none; }
+
+    .note-status {
+      font-size: 11px;
+      color: #28a745;
+      margin-top: 3px;
+      text-align: right;
+    }
+
+    .footer { font-size: 11px; color: #aaa; margin-top: 10px; font-style: italic; }
+  </style>
+</head>
+
+<body>
+  <h3>UIH Data Copier v3.6</h3>
+  <div id="status" class="status">กำลังตรวจสอบ...</div>
+
+  <div id="dataCard" class="card hidden">
+    <div class="label">ลูกค้าที่จำไว้:</div>
+    <div id="storedCompany" class="value">- ไม่มีข้อมูล -</div>
+
+    <div class="label" style="margin-top:8px;">โน้ตของดีลนี้:</div>
+    <textarea id="dealNote" class="note-box" placeholder="พิมพ์โน้ต/สรุป requirement ของดีลนี้..."></textarea>
+
+    <button id="btnSaveNote" class="btn-note-save">💾 บันทึกโน้ต</button>
+    <button id="btnAINote" class="btn-note-ai">✨ Auto Note</button>
+
+    <div id="noteStatus" class="note-status hidden">บันทึกแล้ว</div>
+  </div>
+
+  <button id="btnCopy" class="btn-copy hidden">🚀 ดึงข้อมูลจาก SalesWiz</button>
+
+  <!-- Removed customer search button (auto search in costsheet_writer.js)
+  <button id="btnSearch" class="btn-search hidden">🔍 ค้นหาลูกค้าใน CostSheet</button>
+  -->
+
+  <button id="btnDelete" class="btn-delete hidden">🗑️ ลบข้อมูลดีลที่จำไว้</button>
+
+  <div class="footer">by Joke</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

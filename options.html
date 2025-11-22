@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>UIH Data Copier - Settings</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      padding: 16px;
+      max-width: 480px;
+      color: #333;
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 18px;
+    }
+    h3 {
+      font-size: 14px;
+      margin-top: 18px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 2px;
+    }
+    .field {
+      margin-bottom: 8px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 2px;
+      font-weight: bold;
+    }
+    input[type="number"], select {
+      width: 140px;
+      padding: 4px;
+      font-size: 12px;
+      margin-right: 6px;
+    }
+    .hint {
+      font-size: 11px;
+      color: #777;
+    }
+    button {
+      margin-top: 12px;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 4px;
+      background-color: #007bff;
+      color: white;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    #status {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #28a745;
+    }
+    #autoStatus {
+      font-size: 11px;
+      color: #555;
+      white-space: pre-line;
+    }
+  </style>
+</head>
+<body>
+  <h2>UIH Data Copier - Settings</h2>
+
+  <h3>โหมดการหน่วงเวลา (Delay Mode)</h3>
+  <div class="field">
+    <label for="delayMode">Delay Mode</label>
+    <select id="delayMode">
+      <option value="auto">Auto (Intelligent Delay)</option>
+      <option value="manual">Manual (ใช้ค่าด้านล่างตามที่ระบุ)</option>
+    </select>
+    <span class="hint">
+      Auto = ปรับเวลารอเองตาม runtime, Manual = ใช้ค่าที่ตั้งไว้ตรง ๆ ไม่ปรับเพิ่ม/ลด
+    </span>
+  </div>
+
+  <h3>ทั่วไป (General)</h3>
+  <div class="field">
+    <label for="startDelay">Start Delay (ms)</label>
+    <input id="startDelay" type="number" min="0" max="60000" step="100">
+    <span class="hint">รอก่อนเริ่มทำงานบนหน้า CreateDoc (เช่น 500–3000)</span>
+  </div>
+
+  <div class="field">
+    <label for="clickDelay">Click Delay (ms)</label>
+    <input id="clickDelay" type="number" min="50" max="5000" step="50">
+    <span class="hint">จังหวะคลิก/ยิง event ทั่วไป (เช่น 100–300)</span>
+  </div>
+
+  <div class="field">
+    <label for="dropdownDelay">Dropdown Reload Delay (ms)</label>
+    <input id="dropdownDelay" type="number" min="200" max="10000" step="100">
+    <span class="hint">รอหลังเปลี่ยน Sale / Deal Type ก่อน run อีกรอบ (เช่น 1000–4000)</span>
+  </div>
+
+  <h3>ค้นหาลูกค้า (Search Customer)</h3>
+  <div class="field">
+    <label for="popupWait">Popup Wait (ms)</label>
+    <input id="popupWait" type="number" min="200" max="15000" step="100">
+    <span class="hint">รอหลัง Cancel/Close popup เดิมก่อนกด Add (+) (เช่น 800–3000)</span>
+  </div>
+
+  <div class="field">
+    <label for="resultWait">Result Wait (ms)</label>
+    <input id="resultWait" type="number" min="300" max="20000" step="100">
+    <span class="hint">รอหลังคลิกค้นหาลูกค้า ก่อนอ่าน dropdown ผลลัพธ์ (ยิ่งน้อยยิ่งไว)</span>
+  </div>
+
+  <div class="field">
+    <label for="popupPollDelay">Popup Poll Delay (ms)</label>
+    <input id="popupPollDelay" type="number" min="50" max="5000" step="50">
+    <span class="hint">ความถี่ในการเช็คว่า popup ค้นหาลูกค้าโหลดแล้ว (เช่น 100–400)</span>
+  </div>
+
+  <div class="field">
+    <label for="popupTimeout">Popup Timeout (ms)</label>
+    <input id="popupTimeout" type="number" min="1000" max="30000" step="500">
+    <span class="hint">เวลารอสูงสุดสำหรับ popup ค้นหาลูกค้า (เช่น 6000–12000)</span>
+  </div>
+
+  <h3>Add Customer</h3>
+  <div class="field">
+    <label for="addPollDelay">Add Poll Delay (ms)</label>
+    <input id="addPollDelay" type="number" min="50" max="5000" step="50">
+    <span class="hint">ความถี่ในการเช็คฟอร์ม Add Customer (เช่น 150–400)</span>
+  </div>
+
+  <div class="field">
+    <label for="addTimeout">Add Timeout (ms)</label>
+    <input id="addTimeout" type="number" min="1000" max="30000" step="500">
+    <span class="hint">เวลารอสูงสุดสำหรับฟอร์ม Add Customer (เช่น 8000–15000)</span>
+  </div>
+
+  <button id="saveBtn">💾 Save Settings</button>
+  <div id="status"></div>
+
+  <h3>สถานะ Auto Delay (อ่านจาก Runtime จริง)</h3>
+  <div class="field">
+    <div id="autoStatus" class="hint">
+      ยังไม่มีข้อมูล runtime (ลองใช้ระบบ auto สัก 1–2 ดีล แล้วมาเปิดหน้านี้ใหม่)
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
