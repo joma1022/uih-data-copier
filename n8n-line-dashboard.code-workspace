@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "n8n-line-dashboard",
+			"path": "../../n8n-line-dashboard"
+		},
+		{
+			"name": "MyDataCopier_v2_ToolbarOnly ",
+			"path": "."
+		}
+	],
+	"settings": {}
+}

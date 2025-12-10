@@ -48,16 +48,16 @@ function sanitizeConfig(raw) {
     if (mode !== "auto" && mode !== "manual") mode = "auto";
 
     return {
-        delayMode:     mode,
-        startDelay:     clamp(base.startDelay,     0,    60000, CFG.startDelay),
-        clickDelay:     clamp(base.clickDelay,     50,   5000,  CFG.clickDelay),
-        dropdownDelay:  clamp(base.dropdownDelay,  200,  10000, CFG.dropdownDelay),
-        popupWait:      clamp(base.popupWait,      200,  15000, CFG.popupWait),
-        resultWait:     clamp(base.resultWait,     300,  20000, CFG.resultWait),
-        popupPollDelay: clamp(base.popupPollDelay, 50,   5000,  CFG.popupPollDelay),
-        popupTimeout:   clamp(base.popupTimeout,   1000, 30000, CFG.popupTimeout),
-        addPollDelay:   clamp(base.addPollDelay,   50,   5000,  CFG.addPollDelay),
-        addTimeout:     clamp(base.addTimeout,     1000, 30000, CFG.addTimeout)
+        delayMode: mode,
+        startDelay: clamp(base.startDelay, 0, 60000, CFG.startDelay),
+        clickDelay: clamp(base.clickDelay, 50, 5000, CFG.clickDelay),
+        dropdownDelay: clamp(base.dropdownDelay, 200, 10000, CFG.dropdownDelay),
+        popupWait: clamp(base.popupWait, 200, 15000, CFG.popupWait),
+        resultWait: clamp(base.resultWait, 300, 20000, CFG.resultWait),
+        popupPollDelay: clamp(base.popupPollDelay, 50, 5000, CFG.popupPollDelay),
+        popupTimeout: clamp(base.popupTimeout, 1000, 30000, CFG.popupTimeout),
+        addPollDelay: clamp(base.addPollDelay, 50, 5000, CFG.addPollDelay),
+        addTimeout: clamp(base.addTimeout, 1000, 30000, CFG.addTimeout)
     };
 }
 
@@ -69,13 +69,17 @@ function updateAvg(currentAvg, newSample, weight = 0.5) {
 
 // ---------- ฟังก์ชันพื้นฐาน ----------
 
-function getTomorrowDate() {
-    const today = new Date();
-    const t = new Date(today);
-    t.setDate(t.getDate() + 1);
-    const d = String(t.getDate()).padStart(2, "0");
-    const m = String(t.getMonth() + 1).padStart(2, "0");
-    const y = t.getFullYear();
+function getTodayDate() {
+    // ใช้ timezone ประเทศไทย (Asia/Bangkok, UTC+7)
+    const options = { timeZone: "Asia/Bangkok" };
+    const now = new Date();
+
+    // แปลงเป็นเวลาไทย
+    const thaiDate = new Date(now.toLocaleString("en-US", options));
+
+    const d = String(thaiDate.getDate()).padStart(2, "0");
+    const m = String(thaiDate.getMonth() + 1).padStart(2, "0");
+    const y = thaiDate.getFullYear();
     return `${d}/${m}/${y}`;
 }
 
@@ -90,6 +94,16 @@ function normalizeText(t) {
     return String(t).trim().toUpperCase();
 }
 
+// ลบคำนำหน้าชื่อ เช่น Mr., Ms., นาย, นาง
+function stripNamePrefix(t) {
+    if (!t) return "";
+    // ลบ prefix ภาษาอังกฤษและไทย
+    return t
+        .replace(/^(MR\.|MRS\.|MS\.|MISS\.|DR\.)\s*/i, "")
+        .replace(/^(นาย|นาง|นางสาว|ดร\.)\s*/i, "")
+        .trim();
+}
+
 function fireDropdownChange(selectElement) {
     try {
         if (typeof selectElement.onchange === "function") {
@@ -101,7 +115,7 @@ function fireDropdownChange(selectElement) {
     }
 }
 
-// ---------- dropdown helper + Smart Retry ----------
+// ---------- dropdown helper + Smart Retry + Safe Fuzzy Matching ----------
 
 function checkAndSetDropdown(elementId, targetValue, label) {
     const selectElement = document.getElementById(elementId);
@@ -117,46 +131,112 @@ function checkAndSetDropdown(elementId, targetValue, label) {
     }
 
     const target = normalizeText(targetValue);
+    const targetStripped = stripNamePrefix(target); // ลบ Mr., Ms., นาย, นาง
+    const targetFirstWord = targetStripped.split(/\s+/)[0]; // คำแรกของชื่อ (หลังลบ prefix)
+    const currentIndex = selectElement.selectedIndex;
+
     let currentText = "";
-    if (
-        selectElement.selectedIndex >= 0 &&
-        selectElement.selectedIndex < options.length
-    ) {
-        currentText = normalizeText(options[selectElement.selectedIndex].text);
+    let currentStripped = "";
+    if (currentIndex >= 0 && currentIndex < options.length) {
+        currentText = normalizeText(options[currentIndex].text);
+        currentStripped = stripNamePrefix(currentText);
     }
 
-    if (currentText === target && target !== "") {
+    // ถ้าค่าปัจจุบันตรงกับ target แล้ว (รวมถึงแบบ stripped) ไม่ต้องเปลี่ยน
+    if ((currentText === target || currentStripped === targetStripped) && target !== "") {
         console.log(`ℹ️ ${label}: ค่าเดิมตรงอยู่แล้ว (${currentText})`);
         return { changed: false, hasOptions: true };
     }
 
-    // exact match
+    // Helper function to set dropdown
+    function setDropdownValue(index, matchType) {
+        // ป้องกัน infinite loop - ถ้า index เดิมอยู่แล้ว ไม่ต้องเปลี่ยน
+        if (index === currentIndex) {
+            console.log(`ℹ️ ${label}: เลือก index ${index} อยู่แล้ว ไม่ต้องเปลี่ยน`);
+            return { changed: false, hasOptions: true };
+        }
+
+        console.log(
+            `⚡ ${label}: '${currentText}' -> '${options[index].text}' (${matchType})`
+        );
+        selectElement.selectedIndex = index;
+        selectElement.value = options[index].value;
+        fireDropdownChange(selectElement);
+        return { changed: true, hasOptions: true };
+    }
+
+    // 1) Exact match - ตรงเป๊ะ
     for (let i = 0; i < options.length; i++) {
         if (normalizeText(options[i].text) === target) {
-            console.log(
-                `⚡ ${label}: '${currentText}' -> '${options[i].text}' (exact)`
-            );
-            selectElement.selectedIndex = i;
-            selectElement.value = options[i].value;
-            fireDropdownChange(selectElement);
-            return { changed: true, hasOptions: true };
+            return setDropdownValue(i, "exact");
         }
     }
 
-    // partial match
+    // 1.5) Exact match แบบ stripped - ตรงเป๊ะหลังลบ prefix
     for (let i = 0; i < options.length; i++) {
-        if (target && normalizeText(options[i].text).includes(target)) {
-            console.log(
-                `⚡ ${label}: '${currentText}' -> '${options[i].text}' (contains)`
-            );
-            selectElement.selectedIndex = i;
-            selectElement.value = options[i].value;
-            fireDropdownChange(selectElement);
-            return { changed: true, hasOptions: true };
+        const optStripped = stripNamePrefix(normalizeText(options[i].text));
+        if (optStripped === targetStripped && targetStripped !== "") {
+            return setDropdownValue(i, "exact-stripped");
         }
     }
 
+    // 2) Target contains in option - ชื่อที่หาอยู่ใน option
+    for (let i = 0; i < options.length; i++) {
+        const optText = normalizeText(options[i].text);
+        if (target && optText.includes(target)) {
+            return setDropdownValue(i, "contains");
+        }
+    }
+
+    // 2.5) Stripped contains - ชื่อที่หา (stripped) อยู่ใน option
+    for (let i = 0; i < options.length; i++) {
+        const optStripped = stripNamePrefix(normalizeText(options[i].text));
+        if (targetStripped && optStripped.includes(targetStripped)) {
+            return setDropdownValue(i, "contains-stripped");
+        }
+    }
+
+    // 3) Option contains target - option อยู่ในชื่อที่หา (reverse)
+    for (let i = 0; i < options.length; i++) {
+        const optText = normalizeText(options[i].text);
+        const optStripped = stripNamePrefix(optText);
+        // ข้าม option สั้นเกินไป และข้าม option ที่เลือกอยู่แล้ว
+        if (optStripped && optStripped.length > 2 && i !== currentIndex && targetStripped.includes(optStripped)) {
+            return setDropdownValue(i, "reverse-contains");
+        }
+    }
+
+    // 4) First word match - คำแรกตรงกัน (ปลอดภัยกว่า fuzzy)
+    if (targetFirstWord && targetFirstWord.length > 2) {
+        for (let i = 0; i < options.length; i++) {
+            if (i === currentIndex) continue; // ข้าม option ที่เลือกอยู่
+            const optStripped = stripNamePrefix(normalizeText(options[i].text));
+            const optFirstWord = optStripped.split(/\s+/)[0];
+            if (optFirstWord === targetFirstWord) {
+                return setDropdownValue(i, "first-word");
+            }
+        }
+    }
+
+    // 5) First word contains - คำแรกอยู่ใน option
+    if (targetFirstWord && targetFirstWord.length > 2) {
+        for (let i = 0; i < options.length; i++) {
+            if (i === currentIndex) continue; // ข้าม option ที่เลือกอยู่
+            if (normalizeText(options[i].text).includes(targetFirstWord)) {
+                return setDropdownValue(i, "first-word-contains");
+            }
+        }
+    }
+
+    // ไม่เจอเลย - แสดง debug log
     console.log(`❌ ${label}: หา '${targetValue}' ไม่เจอใน dropdown`);
+    console.log(`📋 รายชื่อทั้งหมดใน ${label} dropdown:`);
+    const allOptions = [];
+    for (let i = 0; i < options.length; i++) {
+        allOptions.push(`  [${i}] ${options[i].text}`);
+    }
+    console.log(allOptions.join("\n"));
+
     return { changed: false, hasOptions: true };
 }
 
@@ -439,7 +519,7 @@ function runWriterProcess() {
             "Contract Start Date"
         );
         if (startDateInput) {
-            const newVal = getTomorrowDate();
+            const newVal = getTodayDate();
             if (startDateInput.value !== newVal) {
                 startDateInput.value = newVal;
                 startDateInput.focus();

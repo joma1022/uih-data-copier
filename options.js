@@ -1,123 +1,255 @@
-// === options.js (v4 - Full Delay Control + Mode + Status) ===
+// === options.js (v5.1 - Note + Deal History) ===
+document.addEventListener("DOMContentLoaded", async () => {
+    let tab = null;
 
-const DEFAULT_CFG = {
-  delayMode: "auto",          // "auto" | "manual"
-  startDelay: 1000,
-  clickDelay: 150,
-  dropdownDelay: 800,
-  popupWait: 800,
-  resultWait: 1000,
-  popupPollDelay: 150,
-  popupTimeout: 8000,
-  addPollDelay: 150,
-  addTimeout: 10000
-};
-
-function clamp(v, min, max, def) {
-  if (typeof v !== "number" || Number.isNaN(v)) return def;
-  return Math.min(max, Math.max(min, v));
-}
-
-function sanitizeSettings(raw) {
-  const cfg = { ...DEFAULT_CFG, ...(raw || {}) };
-
-  let mode = (cfg.delayMode || "auto").toLowerCase();
-  if (mode !== "auto" && mode !== "manual") mode = "auto";
-
-  return {
-    delayMode:     mode,
-    startDelay:     clamp(cfg.startDelay,     0,    60000, DEFAULT_CFG.startDelay),
-    clickDelay:     clamp(cfg.clickDelay,     50,   5000,  DEFAULT_CFG.clickDelay),
-    dropdownDelay:  clamp(cfg.dropdownDelay,  200,  10000, DEFAULT_CFG.dropdownDelay),
-    popupWait:      clamp(cfg.popupWait,      200,  15000, DEFAULT_CFG.popupWait),
-    resultWait:     clamp(cfg.resultWait,     300,  20000, DEFAULT_CFG.resultWait),
-    popupPollDelay: clamp(cfg.popupPollDelay, 50,   5000,  DEFAULT_CFG.popupPollDelay),
-    popupTimeout:   clamp(cfg.popupTimeout,   1000, 30000, DEFAULT_CFG.popupTimeout),
-    addPollDelay:   clamp(cfg.addPollDelay,   50,   5000,  DEFAULT_CFG.addPollDelay),
-    addTimeout:     clamp(cfg.addTimeout,     1000, 30000, DEFAULT_CFG.addTimeout)
-  };
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  const delayModeEl     = document.getElementById("delayMode");
-  const startDelayEl    = document.getElementById("startDelay");
-  const clickDelayEl    = document.getElementById("clickDelay");
-  const dropdownDelayEl = document.getElementById("dropdownDelay");
-  const popupWaitEl     = document.getElementById("popupWait");
-  const resultWaitEl    = document.getElementById("resultWait");
-  const popupPollEl     = document.getElementById("popupPollDelay");
-  const popupTimeoutEl  = document.getElementById("popupTimeout");
-  const addPollEl       = document.getElementById("addPollDelay");
-  const addTimeoutEl    = document.getElementById("addTimeout");
-
-  const saveBtn   = document.getElementById("saveBtn");
-  const statusDiv = document.getElementById("status");
-  const autoStatusDiv = document.getElementById("autoStatus");
-
-  // โหลด settings + สถานะ Auto Delay
-  chrome.storage.local.get(["settings", "delayStats"], (res) => {
-    const cfg = sanitizeSettings(res.settings);
-    const stats = res.delayStats || {};
-
-    delayModeEl.value    = cfg.delayMode;
-    startDelayEl.value   = cfg.startDelay;
-    clickDelayEl.value   = cfg.clickDelay;
-    dropdownDelayEl.value= cfg.dropdownDelay;
-    popupWaitEl.value    = cfg.popupWait;
-    resultWaitEl.value   = cfg.resultWait;
-    popupPollEl.value    = cfg.popupPollDelay;
-    popupTimeoutEl.value = cfg.popupTimeout;
-    addPollEl.value      = cfg.addPollDelay;
-    addTimeoutEl.value   = cfg.addTimeout;
-
-    // แสดงสถานะ Auto Delay
-    const popupAvg = stats.popupReadyAvg != null
-      ? `${Math.round(stats.popupReadyAvg)} ms`
-      : "ยังไม่มีข้อมูล";
-    const addAvg = stats.addFormReadyAvg != null
-      ? `${Math.round(stats.addFormReadyAvg)} ms`
-      : "ยังไม่มีข้อมูล";
-
-    let updated = "";
-    if (stats.updatedAt) {
-      const d = new Date(stats.updatedAt);
-      updated = d.toLocaleString();
-    } else {
-      updated = "ยังไม่เคยเก็บสถิติ";
+    try {
+        const tabs = await chrome.tabs.query({
+            active: true,
+            currentWindow: true
+        });
+        tab = tabs[0];
+    } catch (e) {
+        console.error("tabs.query error:", e);
+        const status = document.getElementById("status");
+        if (status) {
+            status.textContent = "❌ ใช้ Tabs API ไม่ได้ (เช็ก permission)";
+        }
+        return;
     }
 
-    const modeText =
-      cfg.delayMode === "auto"
-        ? "โหมดปัจจุบัน: AUTO (ใช้ Intelligent Delay)\n"
-        : "โหมดปัจจุบัน: MANUAL (ใช้ค่าที่ตั้งตรง ๆ)\n";
+    if (!tab || !tab.url) {
+        const status = document.getElementById("status");
+        if (status) {
+            status.textContent = "❌ ไม่พบแท็บปัจจุบัน";
+        }
+        return;
+    }
 
-    autoStatusDiv.textContent =
-      modeText +
-      `Popup Search Ready เฉลี่ย ~ ${popupAvg}\n` +
-      `Add Customer Form Ready เฉลี่ย ~ ${addAvg}\n` +
-      `อัปเดตล่าสุด: ${updated}`;
-  });
+    // --------- DOM element refs ---------
+    const btnCopy = document.getElementById("btnCopy");
+    const btnDelete = document.getElementById("btnDelete");
+    const statusDiv = document.getElementById("status");
 
-  saveBtn.addEventListener("click", () => {
-    const raw = {
-      delayMode:     delayModeEl.value,
-      startDelay:     parseInt(startDelayEl.value, 10),
-      clickDelay:     parseInt(clickDelayEl.value, 10),
-      dropdownDelay:  parseInt(dropdownDelayEl.value, 10),
-      popupWait:      parseInt(popupWaitEl.value, 10),
-      resultWait:     parseInt(resultWaitEl.value, 10),
-      popupPollDelay: parseInt(popupPollEl.value, 10),
-      popupTimeout:   parseInt(popupTimeoutEl.value, 10),
-      addPollDelay:   parseInt(addPollEl.value, 10),
-      addTimeout:     parseInt(addTimeoutEl.value, 10)
-    };
+    const dataCard = document.getElementById("dataCard");
+    const storedCompany = document.getElementById("storedCompany");
+    const noteTextarea = document.getElementById("dealNote");
+    const btnSaveNote = document.getElementById("btnSaveNote");
+    const btnAINote = document.getElementById("btnAINote");
+    const noteStatus = document.getElementById("noteStatus");
 
-    const cfg = sanitizeSettings(raw);
+    const historyCard = document.getElementById("historyCard");
+    const historyList = document.getElementById("historyList");
+    const historyEmpty = document.getElementById("historyEmpty");
 
-    chrome.storage.local.set({ settings: cfg }, () => {
-      statusDiv.textContent = "✅ Saved";
-      setTimeout(() => (statusDiv.textContent = ""), 1500);
-      console.log("Settings saved:", cfg);
-    });
-  });
+    let currentDealId = null;
+
+    // --------- helper: แสดงสถานะการบันทึกโน้ต ---------
+    function showNoteStatus(msg) {
+        if (!noteStatus) return;
+        noteStatus.textContent = msg || "บันทึกแล้ว";
+        noteStatus.classList.remove("hidden");
+        setTimeout(() => noteStatus.classList.add("hidden"), 1500);
+    }
+
+    // TODO: [REFACTOR] Move formatShortTime() to shared utils.js
+    function formatShortTime(ts) {
+        if (!ts) return "";
+        const d = new Date(ts);
+        const day = String(d.getDate()).padStart(2, "0");
+        const mon = String(d.getMonth() + 1).padStart(2, "0");
+        const hr = String(d.getHours()).padStart(2, "0");
+        const min = String(d.getMinutes()).padStart(2, "0");
+        return `${day}/${mon} ${hr}:${min}`;
+    }
+
+    // TODO: [REFACTOR] Move renderHistory() to shared utils.js
+    // --------- วาด History List จาก dealHistory ---------
+    function renderHistory(history, notes) {
+        if (!historyList || !historyEmpty) return;
+
+        historyList.innerHTML = "";
+
+        if (!history || history.length === 0) {
+            historyEmpty.classList.remove("hidden");
+            return;
+        }
+        historyEmpty.classList.add("hidden");
+
+        history.forEach((h, idx) => {
+            const div = document.createElement("div");
+            div.className = "history-item";
+            div.dataset.dealId = h.id || "";
+
+            const title = document.createElement("div");
+            title.className = "history-title";
+            const company = h.company || "(ไม่ระบุชื่อ)";
+            const idText = h.id ? `#${h.id}` : "";
+            title.textContent = `${company} ${idText}`;
+
+            const sub = document.createElement("div");
+            sub.className = "history-sub";
+            const meta = [];
+            if (h.type) meta.push(h.type);
+            if (h.owner) meta.push(h.owner);
+            if (h.period) meta.push(`ระยะ ${h.period}m`);
+            sub.textContent = meta.join(" • ");
+
+            const time = document.createElement("div");
+            time.className = "history-time";
+            time.textContent = `ดึงเมื่อ: ${formatShortTime(h.savedAt)}`;
+
+            div.appendChild(title);
+            div.appendChild(sub);
+            div.appendChild(time);
+
+            // ถ้ามี note ของดีลนี้ แสดงจุดหรือข้อความเล็ก ๆ
+            if (h.id && notes && notes[h.id]) {
+                const noteFlag = document.createElement("div");
+                noteFlag.className = "history-time";
+                noteFlag.textContent = "มีโน้ตบันทึกไว้แล้ว";
+                div.appendChild(noteFlag);
+            }
+
+            // คลิกเพื่อโหลดดีลนี้มาเป็น dealData ปัจจุบัน
+            div.addEventListener("click", () => {
+                if (!h.id && !h.company) return;
+
+                const newDealData = {
+                    id: h.id || null,
+                    company: h.company || "",
+                    type: h.type || "",
+                    period: h.period || "",
+                    owner: h.owner || ""
+                };
+
+                chrome.storage.local.set({ dealData: newDealData }, () => {
+                    console.log("Loaded deal from history:", newDealData);
+                    updateUI(); // refresh UI ให้แสดงดีลนี้ + note ถ้ามี
+                });
+            });
+
+            historyList.appendChild(div);
+        });
+    }
+
+    // --------- โหลด deal + note + history จาก storage มาลง UI ---------
+    function updateUI() {
+        chrome.storage.local.get(["dealData", "dealNotes", "dealHistory"], (data) => {
+            const deal = data.dealData || null;
+            const notes = data.dealNotes || {};
+            const history = data.dealHistory || [];
+
+            // ส่วน current deal + note
+            if (deal && dataCard && storedCompany) {
+                dataCard.classList.remove("hidden");
+                if (btnDelete) btnDelete.classList.remove("hidden");
+
+                const company = deal.company || "(ไม่ระบุชื่อ)";
+                storedCompany.textContent = company;
+                storedCompany.title = company;
+
+                currentDealId = deal.id || null;
+
+                if (currentDealId && notes[currentDealId]) {
+                    if (noteTextarea) noteTextarea.value = notes[currentDealId];
+                } else {
+                    if (noteTextarea) noteTextarea.value = "";
+                }
+            } else {
+                if (dataCard) dataCard.classList.add("hidden");
+                if (btnDelete) btnDelete.classList.add("hidden");
+                if (storedCompany) storedCompany.textContent = "-";
+                if (noteTextarea) noteTextarea.value = "";
+                currentDealId = null;
+            }
+
+            // วาด history
+            renderHistory(history, notes);
+        });
+    }
+    updateUI();
+
+    // --------- ปุ่มบันทึกโน้ต ---------
+    if (btnSaveNote) {
+        btnSaveNote.onclick = () => {
+            if (!currentDealId) {
+                alert("ยังไม่มีดีลที่จำไว้ เลยยังผูกโน้ตไม่ได้");
+                return;
+            }
+            const text = noteTextarea ? noteTextarea.value || "" : "";
+
+            chrome.storage.local.get("dealNotes", (data) => {
+                const notes = data.dealNotes || {};
+                notes[currentDealId] = text;
+
+                chrome.storage.local.set({ dealNotes: notes }, () => {
+                    console.log("Saved note for deal", currentDealId);
+                    showNoteStatus("บันทึกโน้ตแล้ว");
+                    // refresh history (แสดง flag 'มีโน้ต' ถ้ามี)
+                    updateUI();
+                });
+            });
+        };
+    }
+
+    // --------- ปุ่ม Auto Note (เทมเพลตจาก dealData) ---------
+    if (btnAINote) {
+        btnAINote.onclick = () => {
+            chrome.storage.local.get("dealData", (data) => {
+                const deal = data.dealData;
+                if (!deal) {
+                    alert("ยังไม่มีข้อมูลดีลในระบบ (ลองกด 🚀 ดึงข้อมูลจาก SalesWiz ก่อน)");
+                    return;
+                }
+
+                const parts = [];
+                if (deal.company) parts.push(`ลูกค้า: ${deal.company}`);
+                if (deal.type) parts.push(`ประเภทดีล: ${deal.type}`);
+                if (deal.period) parts.push(`ระยะสัญญา: ${deal.period} เดือน`);
+                if (deal.owner) parts.push(`Sales Owner: ${deal.owner}`);
+                if (deal.id) parts.push(`Deal ID: ${deal.id}`);
+
+                const autoText =
+                    "สรุปดีล (Auto Note จากข้อมูลที่ดึงมา):\n" +
+                    parts.join("\n") +
+                    "\n\nความต้องการหลักของลูกค้า (เติมเองเพิ่มได้):\n- ";
+
+                if (noteTextarea) {
+                    noteTextarea.value = autoText;
+                    showNoteStatus("สร้างโน้ตอัตโนมัติแล้ว (แก้เพิ่มได้)");
+                }
+            });
+        };
+    }
+
+    // --------- ปุ่มดึงข้อมูลจาก SalesWiz ---------
+    if (tab.url.includes("saleswiz.uih.co.th/deal/detail/")) {
+        if (statusDiv) statusDiv.textContent = "📍 SalesWiz Deal";
+
+        if (btnCopy) {
+            btnCopy.classList.remove("hidden");
+            btnCopy.onclick = () => {
+                chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    files: ["saleswiz_reader.js"]
+                });
+                window.close();
+            };
+        }
+    } else if (tab.url.includes("costsheet.uih.co.th/CreateDoc.aspx")) {
+        if (statusDiv) statusDiv.textContent = "📍 Cost Sheet (Auto Fill กำลังจัดการให้)";
+        if (btnCopy) btnCopy.classList.add("hidden");
+    } else {
+        if (statusDiv) statusDiv.textContent = "⚪ หน้าเว็บทั่วไป";
+        if (btnCopy) btnCopy.classList.add("hidden");
+    }
+
+    // --------- ปุ่มลบ dealData (ไม่ลบ history / note) ---------
+    if (btnDelete) {
+        btnDelete.onclick = () => {
+            chrome.storage.local.remove(["dealData"], () => {
+                updateUI();
+            });
+        };
+    }
 });

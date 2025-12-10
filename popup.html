@@ -1,12 +1,27 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="UTF-8">
   <style>
-    body { width: 300px; font-family: 'Segoe UI', sans-serif; padding: 15px; text-align: center; color: #333; }
-    h3 { margin: 0 0 5px 0; font-size: 16px; }
+    body {
+      width: 320px;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 15px;
+      text-align: center;
+      color: #333;
+    }
 
-    .status { font-size: 12px; color: #666; margin-bottom: 10px; }
+    h3 {
+      margin: 0 0 5px 0;
+      font-size: 16px;
+    }
+
+    .status {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 10px;
+    }
 
     .card {
       background: #f8f9fa;
@@ -17,8 +32,21 @@
       text-align: left;
     }
 
-    .label { font-size: 11px; color: #888; font-weight: bold; margin-bottom: 4px; }
-    .value { font-size: 14px; font-weight: bold; color: #007bff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .label {
+      font-size: 11px;
+      color: #888;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .value {
+      font-size: 14px;
+      font-weight: bold;
+      color: #007bff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
     .note-box {
       width: 100%;
@@ -45,14 +73,31 @@
       color: white;
       transition: 0.2s;
     }
-    button:hover { opacity: 0.9; }
 
-    .btn-copy   { background-color: #007bff; }
-    .btn-delete { background-color: #dc3545; margin-top: 6px; }
-    .btn-note-save { background-color: #6c757d; }
-    .btn-note-ai   { background-color: #17a2b8; }
+    button:hover {
+      opacity: 0.9;
+    }
 
-    .hidden { display: none; }
+    .btn-copy {
+      background-color: #007bff;
+    }
+
+    .btn-delete {
+      background-color: #dc3545;
+      margin-top: 6px;
+    }
+
+    .btn-note-save {
+      background-color: #6c757d;
+    }
+
+    .btn-note-ai {
+      background-color: #17a2b8;
+    }
+
+    .hidden {
+      display: none;
+    }
 
     .note-status {
       font-size: 11px;
@@ -61,14 +106,67 @@
       text-align: right;
     }
 
-    .footer { font-size: 11px; color: #aaa; margin-top: 10px; font-style: italic; }
+    .footer {
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 10px;
+      font-style: italic;
+    }
+
+    /* History */
+    #historyCard {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .history-empty {
+      font-size: 11px;
+      color: #999;
+    }
+
+    .history-item {
+      border-bottom: 1px solid #e1e1e1;
+      padding: 4px 0;
+      cursor: pointer;
+    }
+
+    .history-item:last-child {
+      border-bottom: none;
+    }
+
+    .history-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-sub {
+      font-size: 11px;
+      color: #777;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-time {
+      font-size: 10px;
+      color: #aaa;
+    }
+
+    .history-item:hover {
+      background: #eef4ff;
+    }
   </style>
 </head>
 
 <body>
-  <h3>UIH Data Copier v3.6</h3>
+  <h3>UIH Data Copier v3.8</h3>
   <div id="status" class="status">กำลังตรวจสอบ...</div>
 
+  <!-- ดีลปัจจุบัน + Note -->
   <div id="dataCard" class="card hidden">
     <div class="label">ลูกค้าที่จำไว้:</div>
     <div id="storedCompany" class="value">- ไม่มีข้อมูล -</div>
@@ -77,21 +175,24 @@
     <textarea id="dealNote" class="note-box" placeholder="พิมพ์โน้ต/สรุป requirement ของดีลนี้..."></textarea>
 
     <button id="btnSaveNote" class="btn-note-save">💾 บันทึกโน้ต</button>
-    <button id="btnAINote" class="btn-note-ai">✨ Auto Note</button>
+    <button id="btnAINote" class="btn-note-ai">✨ AI Note (Phi-3)</button>
 
     <div id="noteStatus" class="note-status hidden">บันทึกแล้ว</div>
   </div>
 
+  <!-- ประวัติดีล -->
+  <div id="historyCard" class="card">
+    <div class="label">ดีลล่าสุด</div>
+    <div id="historyEmpty" class="history-empty">ยังไม่มีประวัติการดึงดีล</div>
+    <div id="historyList"></div>
+  </div>
+
   <button id="btnCopy" class="btn-copy hidden">🚀 ดึงข้อมูลจาก SalesWiz</button>
-
-  <!-- Removed customer search button (auto search in costsheet_writer.js)
-  <button id="btnSearch" class="btn-search hidden">🔍 ค้นหาลูกค้าใน CostSheet</button>
-  -->
-
-  <button id="btnDelete" class="btn-delete hidden">🗑️ ลบข้อมูลดีลที่จำไว้</button>
+  <button id="btnDelete" class="btn-delete hidden">🗑️ ลบดีลที่จำไว้</button>
 
   <div class="footer">by Joke</div>
 
   <script src="popup.js"></script>
 </body>
+
 </html>

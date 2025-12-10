@@ -1,4 +1,4 @@
-// === background.js (v2.1 - Login Check แบบอ่าน HTML) ===
+// === background.js (v2.2 - Login Check + Keyboard Shortcut) ===
 
 // --- Helper: เช็ก SalesWiz (ใช้ URL เหมือนเดิม) ---
 async function checkSaleswizLogin() {
@@ -37,7 +37,7 @@ async function checkCostsheetLogin() {
 
     // ถ้าใน HTML มีชื่อ field login เช่น Login_Container_txtUsername → แสดงว่าเป็นหน้า Login
     if (text.includes("Login_Container_txtUsername") ||
-        text.includes("Login_Container$txtUsername")) {
+      text.includes("Login_Container$txtUsername")) {
       return false; // มีฟอร์ม login → ยังไม่ได้ล็อกอิน
     }
 
@@ -94,5 +94,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     })();
 
     return true; // async response
+  }
+});
+
+// ---------- Keyboard Shortcut: Ctrl+Shift+D (Mac: Cmd+Shift+D) ----------
+
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command === "copy-deal-data") {
+    try {
+      // หา active tab
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tab = tabs[0];
+
+      if (!tab || !tab.url) {
+        console.warn("Keyboard shortcut: ไม่พบ active tab");
+        return;
+      }
+
+      // เช็กว่าอยู่หน้า SalesWiz Deal Detail หรือไม่
+      if (tab.url.includes("saleswiz.uih.co.th/deal/detail/")) {
+        console.log("⌨️ Keyboard shortcut: กำลังดึงข้อมูลจาก SalesWiz...");
+
+        // รัน saleswiz_reader.js
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ["saleswiz_reader.js"]
+        });
+
+        console.log("⌨️ Keyboard shortcut: ดึงข้อมูลสำเร็จ!");
+      } else {
+        console.log("⌨️ Keyboard shortcut: ไม่ใช่หน้า SalesWiz Deal Detail");
+      }
+    } catch (error) {
+      console.error("Keyboard shortcut error:", error);
+    }
   }
 });

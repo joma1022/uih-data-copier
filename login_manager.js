@@ -1,4 +1,4 @@
-// === popup.js (v4 - DOM-based Login Status) ===
+// === login_manager.js (v4 - DOM-based Login Status) ===
 document.addEventListener("DOMContentLoaded", async () => {
     let tab = null;
 
