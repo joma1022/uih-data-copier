@@ -1,6 +1,6 @@
-// === saleswiz_reader.js (v2.3 - With Error Handling & History) ===
+// === saleswiz_reader.js (v2.4 - With Activities Extraction) ===
 (function () {
-    console.log("SalesWiz Reader v2.3 Running...");
+    console.log("SalesWiz Reader v2.4 Running...");
 
     try {
         let dealId = "";
@@ -8,6 +8,7 @@
         let durationText = "0 Month";
         let dealType = "";
         let ownerName = "";
+        let activities = [];
 
         // ดึง Deal ID
         let dealIdElement = document.querySelector(".deal-id");
@@ -38,6 +39,61 @@
             if (k === "Owner") ownerName = v;
         });
 
+        // ดึง Next Activities - ใช้ selector ที่ตรงกับ SalesWiz
+        // หา h4 ที่มีคำว่า "Next Activities" แล้วหา container ถัดไป
+        const allH4 = document.querySelectorAll("h4");
+        allH4.forEach((h4) => {
+            const text = h4.innerText.trim().toLowerCase();
+            if (text.includes("next activities") || text.includes("next activity")) {
+                // หา container ที่อยู่ใกล้ๆ
+                const parent = h4.closest(".activities-types") || h4.parentElement;
+                if (parent) {
+                    const items = parent.querySelectorAll(".activity-content p.title.card-text, .title.card-text, .card-text");
+                    items.forEach((item) => {
+                        const itemText = item.innerText.trim();
+                        if (itemText && itemText.length > 5) {
+                            activities.push({ type: "next", text: itemText.substring(0, 500) });
+                        }
+                    });
+                }
+            }
+        });
+
+        // ดึง Past Activities
+        allH4.forEach((h4) => {
+            const text = h4.innerText.trim().toLowerCase();
+            if (text.includes("past activities") || text.includes("past activity")) {
+                const parent = h4.closest(".activities-types") || h4.parentElement;
+                if (parent) {
+                    const items = parent.querySelectorAll(".activity-content p.title.card-text, .title.card-text, .card-text");
+                    items.forEach((item, idx) => {
+                        if (idx >= 10) return;
+                        const itemText = item.innerText.trim();
+                        if (itemText && itemText.length > 5) {
+                            activities.push({ type: "past", text: itemText.substring(0, 500) });
+                        }
+                    });
+                }
+            }
+        });
+
+        // Fallback: ถ้ายังไม่เจอ ลองหาจาก .activity-content โดยตรง
+        if (activities.length === 0) {
+            const allActivityContent = document.querySelectorAll(".activity-content");
+            allActivityContent.forEach((content, idx) => {
+                if (idx >= 15) return;
+                const cardTexts = content.querySelectorAll("p.title.card-text, .card-text");
+                cardTexts.forEach((p) => {
+                    const itemText = p.innerText.trim();
+                    if (itemText && itemText.length > 5 && itemText.length < 500) {
+                        activities.push({ type: "activity", text: itemText });
+                    }
+                });
+            });
+        }
+
+        console.log("📋 ดึง Activities ได้:", activities.length, "รายการ");
+
         let contractPeriod = durationText.split(" ")[0].trim();
 
         // สร้าง deal object
@@ -47,6 +103,7 @@
             period: contractPeriod,
             type: dealType,
             owner: ownerName,
+            activities: activities,
             savedAt: Date.now()
         };
 

@@ -578,7 +578,19 @@ function runWriterProcess() {
             }
         }
 
-        // 3) Auto customer
+        // 3) Project Description (ถ้ามี)
+        if (deal.projectDescription) {
+            const descInput = safeGet("cphContent_txtProjectDescription", "Project Description") ||
+                safeGet("cphContent_txtProjDesc", "Project Description");
+            if (descInput && descInput.value !== deal.projectDescription) {
+                descInput.value = deal.projectDescription;
+                descInput.dispatchEvent(new Event("input", { bubbles: true }));
+                descInput.dispatchEvent(new Event("change", { bubbles: true }));
+                console.log("📝 ใส่ Project Description เรียบร้อย");
+            }
+        }
+
+        // 4) Auto customer
         if (deal.company) {
             startCustomerSearchFlow(deal.company.trim(), 0, 2);
         } else {

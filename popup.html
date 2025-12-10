@@ -163,7 +163,7 @@
 </head>
 
 <body>
-  <h3>UIH Data Copier v3.8</h3>
+  <h3>UIH Data Copier v4.0</h3>
   <div id="status" class="status">กำลังตรวจสอบ...</div>
 
   <!-- ดีลปัจจุบัน + Note -->
@@ -171,20 +171,32 @@
     <div class="label">ลูกค้าที่จำไว้:</div>
     <div id="storedCompany" class="value">- ไม่มีข้อมูล -</div>
 
-    <div class="label" style="margin-top:8px;">โน้ตของดีลนี้:</div>
-    <textarea id="dealNote" class="note-box" placeholder="พิมพ์โน้ต/สรุป requirement ของดีลนี้..."></textarea>
+    <div class="label" style="margin-top:8px;">โน้ต / Project Description:</div>
+    <textarea id="dealNote" class="note-box" style="min-height:100px; max-height:200px;"
+      placeholder="พิมพ์โน้ต/สรุป requirement ของดีลนี้..."></textarea>
 
-    <button id="btnSaveNote" class="btn-note-save">💾 บันทึกโน้ต</button>
-    <button id="btnAINote" class="btn-note-ai">✨ AI Note (Phi-3)</button>
+    <div style="display:flex; gap:4px; flex-wrap:wrap;">
+      <button id="btnSaveNote" class="btn-note-save" style="flex:1;">💾 บันทึก</button>
+      <button id="btnAINote" class="btn-note-ai" style="flex:1;">✨ AI สรุป</button>
+      <button id="btnCopyToDesc" class="btn-copy" style="flex:1; margin:0;">📋 Copy to CostSheet</button>
+    </div>
 
     <div id="noteStatus" class="note-status hidden">บันทึกแล้ว</div>
   </div>
 
-  <!-- ประวัติดีล -->
+  <!-- ประวัติดีล (ซ่อนได้) -->
   <div id="historyCard" class="card">
-    <div class="label">ดีลล่าสุด</div>
-    <div id="historyEmpty" class="history-empty">ยังไม่มีประวัติการดึงดีล</div>
-    <div id="historyList"></div>
+    <div class="label" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;"
+      id="historyToggle">
+      <span>📁 ดีลล่าสุด</span>
+      <span id="historyArrow">▼</span>
+    </div>
+    <div id="historyContent" style="display:none;">
+      <div id="historyEmpty" class="history-empty">ยังไม่มีประวัติการดึงดีล</div>
+      <div id="historyList"></div>
+      <button id="btnClearHistory" class="btn-delete" style="margin-top:8px; font-size:11px; padding:4px 8px;">🗑️
+        ล้างประวัติทั้งหมด</button>
+    </div>
   </div>
 
   <button id="btnCopy" class="btn-copy hidden">🚀 ดึงข้อมูลจาก SalesWiz</button>

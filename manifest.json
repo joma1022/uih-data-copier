@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "UIH Data Copier (v3.8 Pro)",
-  "version": "3.8",
+  "name": "UIH Data Copier (v4.0 Pro)",
+  "version": "4.0",
   "description": "ตัวช่วยคัดลอกข้อมูลจาก SalesWiz ไป CostSheet (Popup + Options)",
   "options_page": "options.html",
   "permissions": [
@@ -15,7 +15,8 @@
   "host_permissions": [
     "https://saleswiz.uih.co.th/*",
     "https://costsheet.uih.co.th/*",
-    "http://localhost/*"
+    "http://localhost/*",
+    "https://api.groq.com/*"
   ],
   "icons": {
     "16": "icon.png",

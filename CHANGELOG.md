@@ -2,6 +2,31 @@
 
 All notable changes to UIH Data Copier extension will be documented in this file.
 
+## [4.0] - 2025-12-11
+
+### Added
+- **Collapsible History** - ประวัติดีลซ่อนได้ กดเปิด/ปิด
+- **Clear History** - ปุ่มล้างประวัติทั้งหมด
+- **Activities Extraction** - ดึง Past/Next Activities จาก SalesWiz
+- **AI Summary ใช้ Activities** - AI สรุปข้อมูลจากกิจกรรมล่าสุด
+- **Copy to CostSheet** - ปุ่ม copy note ไปใส่ Project Description
+- **Project Description Auto-fill** - ใส่ Project Description อัตโนมัติ
+
+### Changed
+- ขยายพื้นที่ Note ให้ใหญ่ขึ้น
+- ปรับ UI ให้กระชับขึ้น
+
+---
+
+## [3.9] - 2025-12-11
+
+### Added
+- **AI Provider Settings** - เลือกได้ระหว่าง Ollama (Local) และ Groq Cloud
+- **Groq Integration** - ใช้ Groq API ฟรีสำหรับสร้าง AI Note
+- **Settings Page** - ตั้งค่า AI provider และ API key ได้เอง
+
+---
+
 ## [3.8] - 2025-12-11
 
 ### Added

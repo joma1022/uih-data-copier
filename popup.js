@@ -31,10 +31,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   const noteTextarea = document.getElementById("dealNote");
   const btnSaveNote = document.getElementById("btnSaveNote");
   const btnAINote = document.getElementById("btnAINote");
+  const btnCopyToDesc = document.getElementById("btnCopyToDesc");
   const noteStatus = document.getElementById("noteStatus");
 
+  const historyToggle = document.getElementById("historyToggle");
+  const historyContent = document.getElementById("historyContent");
+  const historyArrow = document.getElementById("historyArrow");
   const historyList = document.getElementById("historyList");
   const historyEmpty = document.getElementById("historyEmpty");
+  const btnClearHistory = document.getElementById("btnClearHistory");
 
   let currentDealId = null;
 
@@ -176,67 +181,240 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
   }
 
-  // AI Note (Phi-3 local ผ่าน /api/generate)
+  // AI Note - ดึงข้อมูลจากหน้า SalesWiz โดยตรง
   if (btnAINote) {
-    btnAINote.onclick = () => {
-      chrome.storage.local.get("dealData", async (data) => {
-        const deal = data.dealData;
+    btnAINote.onclick = async () => {
+      // ดึง settings
+      const settings = await chrome.storage.local.get(["aiSettings"]);
+      const aiSettings = settings.aiSettings || { provider: "none" };
+
+      if (aiSettings.provider === "none") {
+        alert("ยังไม่ได้ตั้งค่า AI Provider\n\nไปที่ Options Page เพื่อตั้งค่า");
+        return;
+      }
+
+      // เช็กว่าอยู่หน้า SalesWiz Deal หรือไม่
+      if (!tab.url.includes("saleswiz.uih.co.th/deal/detail/")) {
+        // ถ้าไม่ใช่หน้า SalesWiz ให้ใช้ข้อมูลจาก storage
+        const stored = await chrome.storage.local.get(["dealData"]);
+        if (!stored.dealData) {
+          alert("ไม่ได้อยู่หน้า SalesWiz และไม่มีข้อมูลดีลใน storage\n\nกรุณาไปที่หน้า SalesWiz Deal แล้วลองใหม่");
+          return;
+        }
+        // ใช้ข้อมูลจาก storage
+        await callAIWithDealData(stored.dealData, aiSettings, showNoteStatus, noteTextarea);
+        return;
+      }
+
+      // ดึงข้อมูลจากหน้า SalesWiz โดยตรง
+      showNoteStatus("กำลังอ่านข้อมูลจากหน้า SalesWiz...");
+
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            // ดึงข้อมูลดีลพื้นฐาน
+            let dealId = "";
+            let companyName = "";
+            let durationText = "0 Month";
+            let dealType = "";
+            let ownerName = "";
+            let activities = [];
+
+            // Deal ID
+            const dealIdEl = document.querySelector(".deal-id");
+            if (dealIdEl) dealId = dealIdEl.innerText.replace(/[^0-9]/g, "");
+
+            // Company
+            const companyIcon = document.querySelector("img[src*='icon_company_info']") ||
+              document.querySelector("img[alt='company icon']");
+            if (companyIcon && companyIcon.nextElementSibling) {
+              companyName = companyIcon.nextElementSibling.innerText.trim();
+            }
+
+            // Fields
+            document.querySelectorAll(".field-title").forEach((t) => {
+              const val = t.nextElementSibling;
+              if (!val) return;
+              const k = t.innerText.trim();
+              const v = val.innerText.trim();
+              if (k === "Service Duration") durationText = v;
+              if (k === "Deal Type") dealType = v;
+              if (k === "Owner") ownerName = v;
+            });
+
+            // Activities - หา h4 แล้วดึง content
+            document.querySelectorAll("h4").forEach((h4) => {
+              const text = h4.innerText.trim().toLowerCase();
+              if (text.includes("next activit") || text.includes("past activit")) {
+                const parent = h4.closest(".activities-types") || h4.parentElement;
+                if (parent) {
+                  parent.querySelectorAll(".activity-content p.title.card-text, .title.card-text, .card-text").forEach((item, idx) => {
+                    if (idx >= 15) return;
+                    const itemText = item.innerText.trim();
+                    if (itemText && itemText.length > 5) {
+                      activities.push(itemText.substring(0, 500));
+                    }
+                  });
+                }
+              }
+            });
+
+            // Fallback
+            if (activities.length === 0) {
+              document.querySelectorAll(".activity-content").forEach((content, idx) => {
+                if (idx >= 15) return;
+                content.querySelectorAll("p.title.card-text, .card-text").forEach((p) => {
+                  const itemText = p.innerText.trim();
+                  if (itemText && itemText.length > 5 && itemText.length < 500) {
+                    activities.push(itemText);
+                  }
+                });
+              });
+            }
+
+            return {
+              id: dealId,
+              company: companyName,
+              period: durationText.split(" ")[0].trim(),
+              type: dealType,
+              owner: ownerName,
+              activities: activities
+            };
+          }
+        });
+
+        const deal = results[0]?.result;
         if (!deal) {
-          alert("ยังไม่มีข้อมูลดีลในระบบ (ลองกด 🚀 ดึงข้อมูลจาก SalesWiz ก่อน)");
+          alert("ไม่สามารถดึงข้อมูลจากหน้านี้ได้");
           return;
         }
 
-        // สร้าง AbortController สำหรับ timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+        console.log("🤖 ดึงข้อมูลสดจากหน้า SalesWiz:", deal);
+        console.log("📋 Activities:", deal.activities.length, "รายการ");
 
-        try {
-          showNoteStatus("กำลังให้ AI (phi3) ช่วยสรุปดีล...");
+        // เรียก AI
+        await callAIWithDealData(deal, aiSettings, showNoteStatus, noteTextarea);
 
-          const prompt =
-            "คุณคือ Presales Engineer ช่วยสรุปดีลให้ใช้ใส่ช่อง Note ใน CostSheet " +
-            "ให้เป็น bullet ภาษาไทย กระชับ อ่านง่าย แยกหัวข้อ \"ข้อมูลลูกค้า\" และ \"ความต้องการหลัก\" และ \"สิ่งที่ต้องทำฝั่งเรา\" " +
-            "ถ้า field บางอย่างไม่มีข้อมูลให้ข้ามไปได้เลย\n\n" +
-            "ข้อมูลดีล (JSON):\n" +
-            JSON.stringify(deal, null, 2);
-
-          const res = await fetch("http://localhost:11434/api/generate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: "phi3",
-              prompt,
-              stream: false
-            }),
-            signal: controller.signal
-          });
-
-          clearTimeout(timeoutId);
-
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          const json = await res.json();
-          const answer = (json && json.response) ? json.response.trim() : "";
-
-          if (!answer) throw new Error("ไม่ได้ข้อความจาก AI");
-
-          if (noteTextarea) noteTextarea.value = answer;
-          showNoteStatus("สร้างโน้ตด้วย AI (Phi-3) แล้ว แก้เพิ่มได้");
-        } catch (err) {
-          clearTimeout(timeoutId);
-          console.error("AI note error:", err);
-
-          let errorMsg = "เรียก AI จาก Ollama ไม่สำเร็จ\n";
-          if (err.name === "AbortError") {
-            errorMsg += "⏱️ หมดเวลา (Timeout 30 วินาที)\nลองเช็กว่า Ollama รันอยู่";
-          } else {
-            errorMsg += "ลองเช็กว่า Ollama รันอยู่ และมีโมเดล phi3 แล้ว\n\nรายละเอียด: " + err.message;
-          }
-
-          alert(errorMsg);
-          showNoteStatus("ใช้ AI ไม่สำเร็จ");
-        }
-      });
+      } catch (err) {
+        console.error("Error reading page:", err);
+        alert("เกิดข้อผิดพลาดในการอ่านข้อมูลจากหน้า\n\n" + err.message);
+      }
     };
+  }
+
+  // ฟังก์ชันเรียก AI
+  async function callAIWithDealData(deal, aiSettings, showNoteStatus, noteTextarea) {
+    // สร้าง prompt พร้อม activities
+    let activitiesText = "";
+    if (deal.activities && deal.activities.length > 0) {
+      activitiesText = "\n\n=== กิจกรรม/ประวัติล่าสุดจาก SalesWiz ===\n" +
+        deal.activities.map((a, i) => `${i + 1}. ${typeof a === 'string' ? a : a.text}`).join("\n");
+    }
+
+    const prompt =
+      "คุณคือ Presales Engineer ช่วยสรุปดีลสำหรับใส่ช่อง Project Description ใน CostSheet\n\n" +
+      "**คำสั่ง:**\n" +
+      "1. อ่านข้อมูลกิจกรรม/ประวัติด้านล่างให้ละเอียด\n" +
+      "2. ดึงข้อมูลสำคัญ เช่น:\n" +
+      "   - Product/Service ที่ลูกค้าต้องการ (เช่น disk, bandwidth, cloud)\n" +
+      "   - ราคา มูลค่า หรือ spec ที่กล่าวถึง\n" +
+      "   - Task/งานที่ต้องทำ\n" +
+      "   - Quotation หรือ Draft ที่สร้างไว้\n" +
+      "3. สรุปเป็น bullet ภาษาไทย กระชับ\n" +
+      "4. แยกหัวข้อ: \"ข้อมูลลูกค้า\" \"ความต้องการ/Requirement\" \"Product/Service\" \"มูลค่า/ราคา\" \"สถานะ\"\n" +
+      "5. ถ้าไม่มีข้อมูลในหัวข้อใด ให้ข้ามไป\n\n" +
+      "=== ข้อมูลดีลพื้นฐาน ===\n" +
+      `ลูกค้า: ${deal.company || "-"}\n` +
+      `ประเภท: ${deal.type || "-"}\n` +
+      `ระยะสัญญา: ${deal.period || "-"} เดือน\n` +
+      `Sale: ${deal.owner || "-"}` +
+      activitiesText;
+
+    console.log("🤖 AI Prompt - Activities count:", deal.activities ? deal.activities.length : 0);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    try {
+      let answer = "";
+
+      if (aiSettings.provider === "ollama") {
+        showNoteStatus(`กำลังให้ AI (${aiSettings.ollamaModel || "phi3"}) ช่วยสรุปดีล...`);
+
+        const res = await fetch("http://localhost:11434/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: aiSettings.ollamaModel || "phi3",
+            prompt,
+            stream: false
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        if (!res.ok) throw new Error("Ollama HTTP " + res.status);
+
+        const json = await res.json();
+        answer = (json && json.response) ? json.response.trim() : "";
+
+      } else if (aiSettings.provider === "groq") {
+        if (!aiSettings.groqApiKey) {
+          alert("ยังไม่ได้ใส่ Groq API Key\n\nไปที่ Options Page เพื่อใส่ API Key");
+          return;
+        }
+
+        showNoteStatus(`กำลังให้ AI (Groq ${aiSettings.groqModel || "llama-3.1-8b-instant"}) ช่วยสรุปดีล...`);
+
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${aiSettings.groqApiKey}`
+          },
+          body: JSON.stringify({
+            model: aiSettings.groqModel || "llama-3.1-8b-instant",
+            messages: [
+              { role: "user", content: prompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 1024
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        if (!res.ok) {
+          const errBody = await res.text();
+          throw new Error(`Groq HTTP ${res.status}: ${errBody}`);
+        }
+
+        const json = await res.json();
+        answer = (json.choices && json.choices[0] && json.choices[0].message)
+          ? json.choices[0].message.content.trim()
+          : "";
+      }
+
+      if (!answer) throw new Error("ไม่ได้ข้อความจาก AI");
+
+      if (noteTextarea) noteTextarea.value = answer;
+      showNoteStatus(`สร้างโน้ตด้วย AI แล้ว แก้เพิ่มได้`);
+
+    } catch (err) {
+      clearTimeout(timeoutId);
+      console.error("AI note error:", err);
+
+      let errorMsg = `เรียก AI (${aiSettings.provider}) ไม่สำเร็จ\n`;
+      if (err.name === "AbortError") {
+        errorMsg += "⏱️ หมดเวลา (Timeout 30 วินาที)";
+      } else {
+        errorMsg += "รายละเอียด: " + err.message;
+      }
+
+      alert(errorMsg);
+      showNoteStatus("ใช้ AI ไม่สำเร็จ");
+    }
   }
 
   // ปุ่มดึงข้อมูลจาก SalesWiz
@@ -265,6 +443,48 @@ document.addEventListener("DOMContentLoaded", async () => {
     btnDelete.onclick = () => {
       chrome.storage.local.remove(["dealData"], () => {
         updateUI();
+      });
+    };
+  }
+
+  // Toggle History (เปิด/ปิด)
+  if (historyToggle) {
+    historyToggle.onclick = () => {
+      if (historyContent) {
+        const isHidden = historyContent.style.display === "none";
+        historyContent.style.display = isHidden ? "block" : "none";
+        if (historyArrow) historyArrow.textContent = isHidden ? "▲" : "▼";
+      }
+    };
+  }
+
+  // ล้างประวัติทั้งหมด
+  if (btnClearHistory) {
+    btnClearHistory.onclick = () => {
+      if (confirm("ต้องการล้างประวัติดีลทั้งหมดหรือไม่?")) {
+        chrome.storage.local.remove(["dealHistory"], () => {
+          showNoteStatus("ล้างประวัติแล้ว");
+          updateUI();
+        });
+      }
+    };
+  }
+
+  // Copy Note ไปใส่ CostSheet (บันทึกไว้ให้ costsheet_writer ใช้)
+  if (btnCopyToDesc) {
+    btnCopyToDesc.onclick = () => {
+      const noteText = noteTextarea ? noteTextarea.value : "";
+      if (!noteText.trim()) {
+        alert("ยังไม่มีโน้ตให้ copy\n\nลองพิมพ์หรือใช้ AI สรุปก่อน");
+        return;
+      }
+      // บันทึก projectDescription ไว้ใน dealData
+      chrome.storage.local.get("dealData", (data) => {
+        const deal = data.dealData || {};
+        deal.projectDescription = noteText;
+        chrome.storage.local.set({ dealData: deal }, () => {
+          showNoteStatus("✅ จะใส่ Project Description เมื่อเปิด CostSheet");
+        });
       });
     };
   }

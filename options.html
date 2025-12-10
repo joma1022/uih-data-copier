@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="UTF-8">
   <title>UIH Data Copier - Settings</title>
@@ -10,10 +11,12 @@
       max-width: 480px;
       color: #333;
     }
+
     h2 {
       margin-top: 0;
       font-size: 18px;
     }
+
     h3 {
       font-size: 14px;
       margin-top: 18px;
@@ -21,25 +24,31 @@
       border-bottom: 1px solid #ddd;
       padding-bottom: 2px;
     }
+
     .field {
       margin-bottom: 8px;
     }
+
     label {
       display: block;
       font-size: 12px;
       margin-bottom: 2px;
       font-weight: bold;
     }
-    input[type="number"], select {
+
+    input[type="number"],
+    select {
       width: 140px;
       padding: 4px;
       font-size: 12px;
       margin-right: 6px;
     }
+
     .hint {
       font-size: 11px;
       color: #777;
     }
+
     button {
       margin-top: 12px;
       padding: 8px 14px;
@@ -51,14 +60,17 @@
       font-weight: bold;
       cursor: pointer;
     }
+
     button:hover {
       opacity: 0.9;
     }
+
     #status {
       margin-top: 8px;
       font-size: 11px;
       color: #28a745;
     }
+
     #autoStatus {
       font-size: 11px;
       color: #555;
@@ -66,6 +78,7 @@
     }
   </style>
 </head>
+
 <body>
   <h2>UIH Data Copier - Settings</h2>
 
@@ -141,6 +154,39 @@
   <button id="saveBtn">💾 Save Settings</button>
   <div id="status"></div>
 
+  <h3>🤖 AI Note Settings</h3>
+  <div class="field">
+    <label for="aiProvider">AI Provider</label>
+    <select id="aiProvider" style="width: 200px;">
+      <option value="none">ปิดใช้งาน AI</option>
+      <option value="ollama">Ollama (Local - ต้องติดตั้งในเครื่อง)</option>
+      <option value="groq">Groq Cloud (ฟรี - ต้องมี API Key)</option>
+    </select>
+    <span class="hint">เลือก AI ที่ต้องการใช้สำหรับสร้าง Note อัตโนมัติ</span>
+  </div>
+
+  <div id="ollamaSettings" class="field" style="display:none;">
+    <label for="ollamaModel">Ollama Model</label>
+    <input id="ollamaModel" type="text" value="phi3" style="width: 140px;">
+    <span class="hint">ชื่อโมเดล เช่น phi3, llama3, mistral</span>
+  </div>
+
+  <div id="groqSettings" class="field" style="display:none;">
+    <label for="groqApiKey">Groq API Key</label>
+    <input id="groqApiKey" type="password" placeholder="gsk_..." style="width: 280px;">
+    <span class="hint">สมัครฟรีที่ <a href="https://console.groq.com" target="_blank">console.groq.com</a></span>
+  </div>
+
+  <div id="groqModelSettings" class="field" style="display:none;">
+    <label for="groqModel">Groq Model</label>
+    <select id="groqModel" style="width: 200px;">
+      <option value="llama-3.1-8b-instant">Llama 3.1 8B (เร็ว)</option>
+      <option value="llama-3.3-70b-versatile">Llama 3.3 70B (ฉลาดกว่า)</option>
+      <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+    </select>
+    <span class="hint">เลือกโมเดลที่ต้องการใช้</span>
+  </div>
+
   <h3>สถานะ Auto Delay (อ่านจาก Runtime จริง)</h3>
   <div class="field">
     <div id="autoStatus" class="hint">
@@ -148,6 +194,7 @@
     </div>
   </div>
 
-  <script src="options.js"></script>
+  <script src="settings.js"></script>
 </body>
+
 </html>
