@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "UIH Data Copier (v4.0 Pro)",
-  "version": "4.0",
-  "description": "ตัวช่วยคัดลอกข้อมูลจาก SalesWiz ไป CostSheet (Popup + Options)",
+  "name": "UIH Data Copier (v4.1 Pro)",
+  "version": "4.1",
+  "description": "ตัวช่วยคัดลอกข้อมูลจาก SalesWiz ไป CostSheet (Popup + Options + Auto-Delete)",
   "options_page": "options.html",
   "permissions": [
     "storage",

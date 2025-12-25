@@ -1,6 +1,7 @@
-// === saleswiz_reader.js (v2.4 - With Activities Extraction) ===
+// === saleswiz_reader.js (v2.5 - Enhanced Logging) ===
 (function () {
-    console.log("SalesWiz Reader v2.4 Running...");
+    const LOG_PREFIX = "[SalesWizReader]";
+    console.log(`${LOG_PREFIX} 🚀 v2.5 Running...`);
 
     try {
         let dealId = "";
@@ -92,7 +93,7 @@
             });
         }
 
-        console.log("📋 ดึง Activities ได้:", activities.length, "รายการ");
+        console.log(`${LOG_PREFIX} 📋 ดึง Activities ได้: ${activities.length} รายการ`);
 
         let contractPeriod = durationText.split(" ")[0].trim();
 
@@ -109,10 +110,19 @@
 
         // ตรวจสอบว่าดึงข้อมูลได้หรือไม่
         if (!dealId && !companyName) {
-            console.warn("⚠️ ไม่พบข้อมูลดีลในหน้านี้");
+            console.warn(`${LOG_PREFIX} ⚠️ ไม่พบข้อมูลดีลในหน้านี้`);
             alert("⚠️ ไม่พบข้อมูลดีลในหน้านี้\nกรุณาตรวจสอบว่าอยู่ในหน้า Deal Detail");
             return;
         }
+
+        console.log(`${LOG_PREFIX} 📦 ข้อมูลที่ดึงได้:`, {
+            dealId,
+            company: companyName,
+            type: dealType,
+            owner: ownerName,
+            period: contractPeriod,
+            activitiesCount: activities.length
+        });
 
         // บันทึก dealData และเพิ่มเข้า dealHistory
         chrome.storage.local.get(["dealHistory"], function (data) {
@@ -144,7 +154,8 @@
                     dealHistory: history
                 },
                 function () {
-                    console.log("✅ บันทึกข้อมูลดีลและ history เรียบร้อย:", newDeal);
+                    console.log(`${LOG_PREFIX} ✅ บันทึกข้อมูลดีลและ history เรียบร้อย`);
+                    console.log(`${LOG_PREFIX} 🌐 เปิด CostSheet...`);
                     // TODO: [REFACTOR] Move URL to constants.js
                     window.open("https://costsheet.uih.co.th/CreateDoc.aspx", "_blank");
                 }
@@ -152,7 +163,7 @@
         });
 
     } catch (error) {
-        console.error("❌ SalesWiz Reader Error:", error);
+        console.error(`${LOG_PREFIX} ❌ Error:`, error);
         alert("❌ เกิดข้อผิดพลาดในการดึงข้อมูล\n" + error.message);
     }
 })();

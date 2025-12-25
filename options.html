@@ -151,6 +151,19 @@
     <span class="hint">เวลารอสูงสุดสำหรับฟอร์ม Add Customer (เช่น 8000–15000)</span>
   </div>
 
+  <h3>🗑️ Auto-Delete Settings</h3>
+  <div class="field">
+    <label for="autoDeleteEnabled">เปิดใช้งาน Auto-Delete</label>
+    <input type="checkbox" id="autoDeleteEnabled" style="width:auto; margin-left: 8px;">
+    <span class="hint">ลบข้อมูลดีลอัตโนมัติหลังใส่ใน CostSheet</span>
+  </div>
+
+  <div class="field">
+    <label for="autoDeleteDelay">ลบหลังจาก (วินาที)</label>
+    <input id="autoDeleteDelay" type="number" min="0" max="3600" step="5" value="30" style="width: 80px;">
+    <span class="hint">0 = ลบทันที, สูงสุด 3600 วินาที (1 ชั่วโมง)</span>
+  </div>
+
   <button id="saveBtn">💾 Save Settings</button>
   <div id="status"></div>
 

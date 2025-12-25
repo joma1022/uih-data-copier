@@ -24,7 +24,8 @@ document.addEventListener("DOMContentLoaded", () => {
     function loadSettings() {
         chrome.storage.local.get([
             "aiSettings",
-            "costsheetWriterConfig"
+            "costsheetWriterConfig",
+            "autoDeleteSettings"
         ], (data) => {
             // AI Settings
             const ai = data.aiSettings || {};
@@ -58,6 +59,13 @@ document.addEventListener("DOMContentLoaded", () => {
             if (popupTimeout) popupTimeout.value = cfg.popupTimeout ?? 8000;
             if (addPollDelay) addPollDelay.value = cfg.addPollDelay ?? 200;
             if (addTimeout) addTimeout.value = cfg.addTimeout ?? 10000;
+
+            // Auto-Delete Settings
+            const autoDelete = data.autoDeleteSettings || {};
+            const autoDeleteEnabled = document.getElementById("autoDeleteEnabled");
+            const autoDeleteDelay = document.getElementById("autoDeleteDelay");
+            if (autoDeleteEnabled) autoDeleteEnabled.checked = autoDelete.enabled || false;
+            if (autoDeleteDelay) autoDeleteDelay.value = autoDelete.delaySeconds ?? 30;
         });
 
         // Load runtime stats
@@ -108,9 +116,18 @@ document.addEventListener("DOMContentLoaded", () => {
             addTimeout: addTimeout ? parseInt(addTimeout.value) : 10000
         };
 
+        // Auto-Delete Settings
+        const autoDeleteEnabled = document.getElementById("autoDeleteEnabled");
+        const autoDeleteDelay = document.getElementById("autoDeleteDelay");
+        const autoDeleteSettings = {
+            enabled: autoDeleteEnabled ? autoDeleteEnabled.checked : false,
+            delaySeconds: autoDeleteDelay ? parseInt(autoDeleteDelay.value) : 30
+        };
+
         chrome.storage.local.set({
             aiSettings,
-            costsheetWriterConfig
+            costsheetWriterConfig,
+            autoDeleteSettings
         }, () => {
             if (status) {
                 status.textContent = "✅ บันทึกสำเร็จ!";

@@ -2,6 +2,19 @@
 
 All notable changes to UIH Data Copier extension will be documented in this file.
 
+## [4.1] - 2025-12-25
+
+### Added
+- **Auto-Delete Settings** - ตั้งค่าลบข้อมูลดีลอัตโนมัติหลังใส่ใน CostSheet
+- **Delay in Seconds** - ตั้งเวลาลบได้ตั้งแต่ 0-3600 วินาที (0 = ลบทันที)
+- **Enhanced Logging** - เพิ่ม log ใน console ทุกไฟล์หลัก:
+  - `[SalesWizReader]` - ดึงข้อมูลจาก SalesWiz
+  - `[CostSheetWriter]` - กรอกข้อมูลใน CostSheet
+  - `[Background]` - จัดการ Alarm และ Login Check
+  - `[LoginManager]` - ตรวจสถานะ Login
+
+---
+
 ## [4.0] - 2025-12-11
 
 ### Added

@@ -1,4 +1,5 @@
-// === background.js (v2.2 - Login Check + Keyboard Shortcut) ===
+// === background.js (v2.3 - Enhanced Logging) ===
+const LOG_PREFIX = "[Background]";
 
 // --- Helper: เช็ก SalesWiz (ใช้ URL เหมือนเดิม) ---
 async function checkSaleswizLogin() {
@@ -14,10 +15,13 @@ async function checkSaleswizLogin() {
     if (!finalUrl) return null;
 
     // ถ้าเด้งไป /login แสดงว่าหลุด
-    if (finalUrl.includes("login")) return false;
+    if (finalUrl.includes("login")) {
+      console.log(`${LOG_PREFIX} SalesWiz: หลุด login (เจอ URL login)`);
+      return false;
+    }
     return true;
   } catch (e) {
-    console.warn("checkSaleswizLogin error:", e);
+    console.warn(`${LOG_PREFIX} ⚠️ checkSaleswizLogin error:`, e);
     return null;
   }
 }
@@ -44,7 +48,7 @@ async function checkCostsheetLogin() {
     // ถ้าไม่มีฟอร์ม login แสดงว่าน่าจะอยู่หน้าในระบบแล้ว
     return true;
   } catch (e) {
-    console.warn("checkCostsheetLogin error:", e);
+    console.warn(`${LOG_PREFIX} ⚠️ checkCostsheetLogin error:`, e);
     return null;
   }
 }
@@ -54,35 +58,62 @@ async function checkCostsheetLogin() {
 chrome.alarms.create("keepAlive", { periodInMinutes: 5 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name !== "keepAlive") return;
-
-  chrome.storage.local.get(["salesCreds", "costCreds"], async (res) => {
-
-    if (res.salesCreds) {
-      const swLoggedIn = await checkSaleswizLogin();
-      if (swLoggedIn === false) {
-        chrome.tabs.create(
-          { url: "https://saleswiz.uih.co.th/login#auto", active: false },
-          (tab) => setTimeout(() => chrome.tabs.remove(tab.id), 15000)
-        );
+  if (alarm.name === "keepAlive") {
+    chrome.storage.local.get(["salesCreds", "costCreds"], async (res) => {
+      if (res.salesCreds) {
+        const swLoggedIn = await checkSaleswizLogin();
+        if (swLoggedIn === false) {
+          chrome.tabs.create(
+            { url: "https://saleswiz.uih.co.th/login#auto", active: false },
+            (tab) => setTimeout(() => chrome.tabs.remove(tab.id), 15000)
+          );
+        }
       }
-    }
 
-    if (res.costCreds) {
-      const csLoggedIn = await checkCostsheetLogin();
-      if (csLoggedIn === false) {
-        chrome.tabs.create(
-          { url: "https://costsheet.uih.co.th/Login.aspx#auto", active: false },
-          (tab) => setTimeout(() => chrome.tabs.remove(tab.id), 15000)
-        );
+      if (res.costCreds) {
+        const csLoggedIn = await checkCostsheetLogin();
+        if (csLoggedIn === false) {
+          chrome.tabs.create(
+            { url: "https://costsheet.uih.co.th/Login.aspx#auto", active: false },
+            (tab) => setTimeout(() => chrome.tabs.remove(tab.id), 15000)
+          );
+        }
       }
-    }
-  });
+    });
+  }
+
+  // Auto-Delete Deal Data
+  if (alarm.name === "autoDeleteDeal") {
+    chrome.storage.local.remove(["dealData"], () => {
+      console.log("🗑️ Auto-deleted dealData");
+    });
+  }
 });
 
 // ---------- ใช้ตอบ popup: CHECK_LOGIN_STATUS ----------
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // Auto-Delete scheduling from content script
+  if (request.action === "SCHEDULE_AUTO_DELETE") {
+    const delaySeconds = request.delaySeconds || 0;
+    console.log(`📩 [background] รับคำสั่ง SCHEDULE_AUTO_DELETE (${delaySeconds} วินาที)`);
+
+    if (delaySeconds === 0) {
+      // ลบทันที
+      chrome.storage.local.remove(["dealData"], () => {
+        console.log("🗑️ [background] ลบ dealData ทันที");
+      });
+    } else {
+      // ตั้ง alarm (แปลงวินาทีเป็นนาที, ขั้นต่ำ 0.1 นาที = 6 วินาที)
+      const delayMinutes = Math.max(delaySeconds / 60, 0.1);
+      chrome.alarms.create("autoDeleteDeal", { delayInMinutes: delayMinutes });
+      console.log(`⏰ [background] ตั้งเวลาลบข้อมูลใน ${delaySeconds} วินาที (${delayMinutes.toFixed(2)} นาที)`);
+    }
+    sendResponse({ success: true });
+    return true;
+  }
+
+  // Check login status
   if (request.action === "CHECK_LOGIN_STATUS") {
     (async () => {
       const [saleswiz, costsheet] = await Promise.all([

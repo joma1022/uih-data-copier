@@ -1,6 +1,7 @@
-// === costsheet_writer.js (v7.1 - Auto/Manual Delay Mode + Stats) ===
+// === costsheet_writer.js (v7.2 - Enhanced Logging) ===
+const CSW_LOG = "[CostSheetWriter]";
 
-console.log("CostSheet Writer v7.1 พร้อมทำงาน...");
+console.log(`${CSW_LOG} 🚀 v7.2 พร้อมทำงาน...`);
 
 // ค่า Config เริ่มต้น (จะถูกทับด้วยค่าจาก Options)
 let CFG = {
@@ -477,21 +478,21 @@ function runWriterProcess() {
 
     chrome.storage.local.get(["dealData", "settings"], (result) => {
         if (!result.dealData) {
-            console.log("CostSheet Writer: ไม่พบ dealData ใน storage");
+            console.log(`${CSW_LOG} ℹ️ ไม่พบ dealData ใน storage`);
             return;
         }
 
         const deal = result.dealData;
         CFG = sanitizeConfig(result.settings);
 
-        console.log(
-            "CostSheet Writer: เริ่มกรอกด้วย CFG:",
-            CFG,
-            "delayMode=",
-            CFG.delayMode,
-            "deal:",
-            deal
-        );
+        console.log(`${CSW_LOG} 📦 เริ่มกรอกข้อมูล:`, {
+            dealId: deal.id,
+            company: deal.company,
+            type: deal.type,
+            owner: deal.owner,
+            period: deal.period
+        });
+        console.log(`${CSW_LOG} ⚙️ CFG:`, CFG);
 
         const retryDelay = CFG.dropdownDelay * 2;
 
@@ -586,7 +587,7 @@ function runWriterProcess() {
                 descInput.value = deal.projectDescription;
                 descInput.dispatchEvent(new Event("input", { bubbles: true }));
                 descInput.dispatchEvent(new Event("change", { bubbles: true }));
-                console.log("📝 ใส่ Project Description เรียบร้อย");
+                console.log(`${CSW_LOG} 📝 ใส่ Project Description เรียบร้อย`);
             }
         }
 
@@ -595,6 +596,23 @@ function runWriterProcess() {
             startCustomerSearchFlow(deal.company.trim(), 0, 2);
         } else {
             console.log("ℹ️ deal.company ว่าง จึงไม่ auto ค้นหาลูกค้า");
+        }
+
+        // 5) Schedule auto-delete ถ้าเปิดใช้งาน
+        scheduleAutoDelete();
+    });
+}
+
+// ส่ง message ไป background เพื่อตั้ง alarm ลบข้อมูล
+function scheduleAutoDelete() {
+    chrome.storage.local.get(["autoDeleteSettings"], (data) => {
+        const settings = data.autoDeleteSettings || {};
+        if (settings.enabled) {
+            console.log(`🗑️ Auto-Delete เปิดใช้งาน จะลบข้อมูลใน ${settings.delaySeconds || 0} วินาที`);
+            chrome.runtime.sendMessage({
+                action: "SCHEDULE_AUTO_DELETE",
+                delaySeconds: settings.delaySeconds || 0
+            });
         }
     });
 }

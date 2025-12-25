@@ -1,5 +1,8 @@
-// === login_manager.js (v4 - DOM-based Login Status) ===
+// === login_manager.js (v4.1 - Enhanced Logging) ===
+const LM_LOG = "[LoginManager]";
+
 document.addEventListener("DOMContentLoaded", async () => {
+    console.log(`${LM_LOG} 🚀 เริ่มทำงาน...`);
     let tab = null;
 
     try {
@@ -9,16 +12,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
         tab = tabs[0];
     } catch (e) {
-        console.error("tabs.query error:", e);
-        document.getElementById("status").textContent =
-            "❌ ใช้ Tabs API ไม่ได้ (เช็ก permission)";
+        console.error(`${LM_LOG} ❌ tabs.query error:`, e);
+        const statusEl = document.getElementById("status");
+        if (statusEl) statusEl.textContent = "❌ ใช้ Tabs API ไม่ได้ (เช็ก permission)";
         return;
     }
 
     if (!tab || !tab.url) {
-        document.getElementById("status").textContent = "❌ ไม่พบแท็บปัจจุบัน";
+        console.warn(`${LM_LOG} ⚠️ ไม่พบแท็บปัจจุบัน`);
+        const statusEl = document.getElementById("status");
+        if (statusEl) statusEl.textContent = "❌ ไม่พบแท็บปัจจุบัน";
         return;
     }
+
+    console.log(`${LM_LOG} 📍 Tab URL: ${tab.url.substring(0, 60)}...`);
 
     const btnCopy = document.getElementById("btnCopy");
     const btnSearch = document.getElementById("btnSearch");
@@ -53,10 +60,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             },
             (results) => {
                 if (chrome.runtime.lastError || !results || !results[0]) {
+                    console.warn(`${LM_LOG} ⚠️ SalesWiz: ไม่สามารถตรวจสอบได้`, chrome.runtime.lastError);
                     setSwStatus("⚪ ยังไม่ทราบ");
                     return;
                 }
                 const { isLoginPage } = results[0].result;
+                console.log(`${LM_LOG} SalesWiz isLoginPage: ${isLoginPage}`);
                 setSwStatus(isLoginPage ? "⛔ ยังไม่ได้ Login" : "✅ Login อยู่");
             }
         );
@@ -78,10 +87,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             },
             (results) => {
                 if (chrome.runtime.lastError || !results || !results[0]) {
+                    console.warn(`${LM_LOG} ⚠️ CostSheet: ไม่สามารถตรวจสอบได้`, chrome.runtime.lastError);
                     setCsStatus("⚪ ยังไม่ทราบ");
                     return;
                 }
                 const { isLoginPage } = results[0].result;
+                console.log(`${LM_LOG} CostSheet isLoginPage: ${isLoginPage}`);
                 setCsStatus(isLoginPage ? "⛔ ยังไม่ได้ Login" : "✅ Login อยู่");
             }
         );
