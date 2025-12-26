@@ -152,7 +152,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (dataCard) dataCard.classList.add("hidden");
         if (btnDelete) btnDelete.classList.add("hidden");
         if (storedCompany) storedCompany.textContent = "-";
-        if (noteTextarea) noteTextarea.value = "";
+        // ไม่ล้าง note เพราะยังใช้งาน note ได้ตลอด
+        // โหลด general note ถ้ามี
+        if (noteTextarea && notes["_general"]) {
+          noteTextarea.value = notes["_general"];
+        }
         currentDealId = null;
       }
 
@@ -164,16 +168,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   // บันทึกโน้ต
   if (btnSaveNote) {
     btnSaveNote.onclick = () => {
-      if (!currentDealId) {
-        alert("ยังไม่มีดีลที่จำไว้ เลยยังผูกโน้ตไม่ได้");
-        return;
-      }
       const text = noteTextarea ? noteTextarea.value || "" : "";
+      const noteKey = currentDealId || "_general"; // ใช้ _general ถ้าไม่มี dealId
+
       chrome.storage.local.get("dealNotes", (data) => {
         const notes = data.dealNotes || {};
-        notes[currentDealId] = text;
+        notes[noteKey] = text;
         chrome.storage.local.set({ dealNotes: notes }, () => {
-          console.log("Saved note for deal", currentDealId);
+          console.log("Saved note for:", noteKey);
           showNoteStatus("บันทึกโน้ตแล้ว");
           updateUI();
         });

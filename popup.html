@@ -95,6 +95,11 @@
       background-color: #17a2b8;
     }
 
+    .btn-small {
+      padding: 5px 8px;
+      font-size: 11px;
+    }
+
     .hidden {
       display: none;
     }
@@ -163,22 +168,25 @@
 </head>
 
 <body>
-  <h3>UIH Data Copier v4.0</h3>
+  <h3>UIH Data Copier v4.1</h3>
   <div id="status" class="status">กำลังตรวจสอบ...</div>
 
-  <!-- ดีลปัจจุบัน + Note -->
+  <!-- ดีลปัจจุบัน -->
   <div id="dataCard" class="card hidden">
     <div class="label">ลูกค้าที่จำไว้:</div>
     <div id="storedCompany" class="value">- ไม่มีข้อมูล -</div>
+  </div>
 
-    <div class="label" style="margin-top:8px;">โน้ต / Project Description:</div>
-    <textarea id="dealNote" class="note-box" style="min-height:100px; max-height:200px;"
+  <!-- Note Section (แสดงตลอด) -->
+  <div id="noteCard" class="card">
+    <div class="label">โน้ต / Project Description:</div>
+    <textarea id="dealNote" class="note-box" style="min-height:80px; max-height:150px;"
       placeholder="พิมพ์โน้ต/สรุป requirement ของดีลนี้..."></textarea>
 
-    <div style="display:flex; gap:4px; flex-wrap:wrap;">
-      <button id="btnSaveNote" class="btn-note-save" style="flex:1;">💾 บันทึก</button>
-      <button id="btnAINote" class="btn-note-ai" style="flex:1;">✨ AI สรุป</button>
-      <button id="btnCopyToDesc" class="btn-copy" style="flex:1; margin:0;">📋 Copy to CostSheet</button>
+    <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:6px;">
+      <button id="btnSaveNote" class="btn-note-save btn-small" style="flex:1;">💾 บันทึก</button>
+      <button id="btnAINote" class="btn-note-ai btn-small" style="flex:1;">✨ AI</button>
+      <button id="btnCopyToDesc" class="btn-copy btn-small" style="flex:1; margin:0;">📋 Copy</button>
     </div>
 
     <div id="noteStatus" class="note-status hidden">บันทึกแล้ว</div>
