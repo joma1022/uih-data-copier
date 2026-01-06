@@ -2,6 +2,18 @@
 
 All notable changes to UIH Data Copier extension will be documented in this file.
 
+## [4.2] - 2026-01-07
+
+### Added
+- **SalesWiz (Wisible) Support** - รองรับ SalesWiz รูปแบบใหม่ (React-based)
+- **Nested Input Extraction** - ดึงข้อมูลจาก TextField ที่ซ่อนอยู่ใน input tag (เช่น Contract Period)
+- **Robust Selectors** - ปรับ selectors ให้หา element ได้แม้มี icon หรือ structure ซับซ้อน
+
+### Fixed
+- แก้ไขปัญหาดึง Contract Period ไม่ได้ใน SalesWiz เวอร์ชันใหม่
+- ปรับปรุงการดึง Metadata (Service Duration, Deal Type, Owner) ให้แม่นยำขึ้น
+
+---
 ## [4.1] - 2025-12-25
 
 ### Added

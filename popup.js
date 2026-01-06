@@ -215,7 +215,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const results = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           func: () => {
-            // ดึงข้อมูลดีลพื้นฐาน
+            // ดึงข้อมูลดีลพื้นฐาน (Updated to v3.0 logic for Wisible)
             let dealId = "";
             let companyName = "";
             let durationText = "0 Month";
@@ -223,57 +223,89 @@ document.addEventListener("DOMContentLoaded", async () => {
             let ownerName = "";
             let activities = [];
 
-            // Deal ID
-            const dealIdEl = document.querySelector(".deal-id");
-            if (dealIdEl) dealId = dealIdEl.innerText.replace(/[^0-9]/g, "");
-
-            // Company
-            const companyIcon = document.querySelector("img[src*='icon_company_info']") ||
-              document.querySelector("img[alt='company icon']");
-            if (companyIcon && companyIcon.nextElementSibling) {
-              companyName = companyIcon.nextElementSibling.innerText.trim();
+            // 1. Deal ID
+            const urlMatch = window.location.href.match(/\/deal\/detail\/(\d+)/);
+            if (urlMatch && urlMatch[1]) {
+              dealId = urlMatch[1];
+            } else {
+              const dealIdEl = document.querySelector(".deal-id");
+              if (dealIdEl) dealId = dealIdEl.innerText.replace(/[^0-9]/g, "");
             }
 
-            // Fields
-            document.querySelectorAll(".field-title").forEach((t) => {
+            // 2. Company
+            const customerNameEl = document.querySelector(".customer-name a");
+            if (customerNameEl) {
+              companyName = customerNameEl.innerText.trim();
+            } else {
+              const companyIcon = document.querySelector("img[src*='icon_company_info']") ||
+                document.querySelector("img[alt='company icon']");
+              if (companyIcon && companyIcon.nextElementSibling) {
+                companyName = companyIcon.nextElementSibling.innerText.trim();
+              }
+            }
+
+            // 3. Metadata
+            document.querySelectorAll("p.field-title, .field-title").forEach((t) => {
               const val = t.nextElementSibling;
               if (!val) return;
-              const k = t.innerText.trim();
-              const v = val.innerText.trim();
-              if (k === "Service Duration") durationText = v;
-              if (k === "Deal Type") dealType = v;
-              if (k === "Owner") ownerName = v;
+              const k = t.innerText.trim().toLowerCase();
+
+              let valNode = t.nextElementSibling;
+              let v = "";
+
+              const getValue = (node) => {
+                if (!node) return "";
+                const input = node.querySelector("input");
+                if (input) return input.value.trim();
+                return node.innerText.trim();
+              };
+
+              v = getValue(valNode);
+
+              if ((!v || v.length === 0) && valNode && valNode.nextElementSibling) {
+                valNode = valNode.nextElementSibling;
+                v = getValue(valNode);
+              }
+
+              if (k.includes("service duration")) durationText = v;
+              if (k.includes("deal type")) dealType = v;
+              if (k.includes("owner") || k.includes("contact person")) ownerName = v;
             });
 
-            // Activities - หา h4 แล้วดึง content
+            // Owner Fallback
+            if (!ownerName) {
+              const personNameEl = document.querySelector(".person-contact-detail .customer-name a");
+              if (personNameEl) {
+                ownerName = personNameEl.innerText.trim();
+              }
+            }
+
+            // 4. Activities
             document.querySelectorAll("h4").forEach((h4) => {
               const text = h4.innerText.trim().toLowerCase();
-              if (text.includes("next activit") || text.includes("past activit")) {
-                const parent = h4.closest(".activities-types") || h4.parentElement;
+              if (text.includes("next activit")) {
+                const parent = h4.closest(".activities-types") || h4.parentElement?.parentElement;
                 if (parent) {
-                  parent.querySelectorAll(".activity-content p.title.card-text, .title.card-text, .card-text").forEach((item, idx) => {
-                    if (idx >= 15) return;
+                  parent.querySelectorAll(".activity-content p.title.card-text, .title.card-text, .card-text").forEach((item) => {
                     const itemText = item.innerText.trim();
                     if (itemText && itemText.length > 5) {
-                      activities.push(itemText.substring(0, 500));
+                      activities.push({ type: "next", text: itemText.substring(0, 500) });
+                    }
+                  });
+                }
+              } else if (text.includes("past activit")) {
+                const parent = h4.closest(".activities-types") || h4.parentElement?.parentElement;
+                if (parent) {
+                  parent.querySelectorAll(".activity-content p.title.card-text, .title.card-text, .card-text").forEach((item, idx) => {
+                    if (idx >= 10) return;
+                    const itemText = item.innerText.trim();
+                    if (itemText && itemText.length > 5) {
+                      activities.push({ type: "past", text: itemText.substring(0, 500) });
                     }
                   });
                 }
               }
             });
-
-            // Fallback
-            if (activities.length === 0) {
-              document.querySelectorAll(".activity-content").forEach((content, idx) => {
-                if (idx >= 15) return;
-                content.querySelectorAll("p.title.card-text, .card-text").forEach((p) => {
-                  const itemText = p.innerText.trim();
-                  if (itemText && itemText.length > 5 && itemText.length < 500) {
-                    activities.push(itemText);
-                  }
-                });
-              });
-            }
 
             return {
               id: dealId,

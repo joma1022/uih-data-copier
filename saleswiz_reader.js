@@ -1,7 +1,7 @@
-// === saleswiz_reader.js (v2.5 - Enhanced Logging) ===
+// === saleswiz_reader.js (v3.0 - Wisible React Support) ===
 (function () {
     const LOG_PREFIX = "[SalesWizReader]";
-    console.log(`${LOG_PREFIX} 🚀 v2.5 Running...`);
+    console.log(`${LOG_PREFIX} 🚀 v3.0 Running (Wisible Support)...`);
 
     try {
         let dealId = "";
@@ -11,43 +11,82 @@
         let ownerName = "";
         let activities = [];
 
-        // ดึง Deal ID
-        let dealIdElement = document.querySelector(".deal-id");
-        if (dealIdElement) {
-            dealId = dealIdElement.innerText.replace(/[^0-9]/g, "");
+        // 1. ดึง Deal ID (จาก URL หรือ Title)
+        // URL Format: https://.../deal/detail/12345
+        const urlMatch = window.location.href.match(/\/deal\/detail\/(\d+)/);
+        if (urlMatch && urlMatch[1]) {
+            dealId = urlMatch[1];
+        } else {
+            // Fallback: ลองหาจาก class old school (เผื่อยังเหลือ)
+            const dealIdEl = document.querySelector(".deal-id");
+            if (dealIdEl) dealId = dealIdEl.innerText.replace(/[^0-9]/g, "");
         }
 
-        // ดึงชื่อบริษัท
-        let companyIcon =
-            document.querySelector("img[src*='icon_company_info']") ||
-            document.querySelector("img[alt='company icon']");
-
-        if (companyIcon && companyIcon.nextElementSibling) {
-            companyName = companyIcon.nextElementSibling.innerText.trim();
+        // 2. ดึงชื่อบริษัท (Structure ใหม่: .customer-name a)
+        const customerNameEl = document.querySelector(".customer-name a");
+        if (customerNameEl) {
+            companyName = customerNameEl.innerText.trim();
+        } else {
+            // Fallback
+            const companyIcon = document.querySelector("img[src*='icon_company_info']") || document.querySelector("img[alt='company icon']");
+            if (companyIcon && companyIcon.nextElementSibling) {
+                companyName = companyIcon.nextElementSibling.innerText.trim();
+            }
         }
 
-        // ดึงข้อมูลจาก field-title
-        let allTitles = document.querySelectorAll(".field-title");
+        // 3. ดึง Metadata (Type, Owner, Duration)
+        // Structure ใหม่: div > p.field-title + p.card-detail-text
+        // เราจะวนหา p.field-title แล้วดูพี่น้องตัวถัดไป
+        const allTitles = document.querySelectorAll("p.field-title, .field-title");
         allTitles.forEach((t) => {
-            let val = t.nextElementSibling;
+            const val = t.nextElementSibling;
             if (!val) return;
 
-            let k = t.innerText.trim();
-            let v = val.innerText.trim();
+            const k = t.innerText.trim().toLowerCase();
 
-            if (k === "Service Duration") durationText = v;
-            if (k === "Deal Type") dealType = v;
-            if (k === "Owner") ownerName = v;
+            // Logic: Try next sibling first.
+            let valNode = t.nextElementSibling;
+            let v = "";
+
+            // Helper to get text or input value
+            const getValue = (node) => {
+                if (!node) return "";
+                const input = node.querySelector("input");
+                if (input) return input.value.trim();
+                return node.innerText.trim();
+            };
+
+            v = getValue(valNode);
+
+            // If empty, try the next sibling (skip potential icon container)
+            if ((!v || v.length === 0) && valNode && valNode.nextElementSibling) {
+                valNode = valNode.nextElementSibling;
+                v = getValue(valNode);
+            }
+
+            if (k.includes("service duration")) durationText = v;
+            if (k.includes("deal type")) dealType = v;
+            if (k.includes("owner") || k.includes("contact person")) ownerName = v;
         });
 
-        // ดึง Next Activities - ใช้ selector ที่ตรงกับ SalesWiz
-        // หา h4 ที่มีคำว่า "Next Activities" แล้วหา container ถัดไป
+        // Owner (Sale Name) บางทีอาจจะไม่ได้อยู่ใน field-title
+        // ลองหาจาก .person-contact-detail .customer-name a (ถ้ามี Sale อยู่ในหน้านั้น)
+        if (!ownerName) {
+            // Logic เสริม: หาชื่อคนที่มี role เป็น Sale (หรือเอาชื่อแรกที่เจอใน contact list)
+            const personNameEl = document.querySelector(".person-contact-detail .customer-name a");
+            if (personNameEl) {
+                ownerName = personNameEl.innerText.trim();
+            }
+        }
+
+        // 4. ดึง Activities (Next / Past)
+        // ต้องหา Header ก่อน แล้วค่อยหา Content ในกล่องเดียวกัน
         const allH4 = document.querySelectorAll("h4");
         allH4.forEach((h4) => {
             const text = h4.innerText.trim().toLowerCase();
+            // Next Activities
             if (text.includes("next activities") || text.includes("next activity")) {
-                // หา container ที่อยู่ใกล้ๆ
-                const parent = h4.closest(".activities-types") || h4.parentElement;
+                const parent = h4.closest(".activities-types") || h4.parentElement?.parentElement;
                 if (parent) {
                     const items = parent.querySelectorAll(".activity-content p.title.card-text, .title.card-text, .card-text");
                     items.forEach((item) => {
@@ -58,17 +97,13 @@
                     });
                 }
             }
-        });
-
-        // ดึง Past Activities
-        allH4.forEach((h4) => {
-            const text = h4.innerText.trim().toLowerCase();
-            if (text.includes("past activities") || text.includes("past activity")) {
-                const parent = h4.closest(".activities-types") || h4.parentElement;
+            // Past Activities
+            else if (text.includes("past activities") || text.includes("past activity")) {
+                const parent = h4.closest(".activities-types") || h4.parentElement?.parentElement;
                 if (parent) {
                     const items = parent.querySelectorAll(".activity-content p.title.card-text, .title.card-text, .card-text");
                     items.forEach((item, idx) => {
-                        if (idx >= 10) return;
+                        if (idx >= 10) return; // เอาแค่ 10 อันล่าสุด
                         const itemText = item.innerText.trim();
                         if (itemText && itemText.length > 5) {
                             activities.push({ type: "past", text: itemText.substring(0, 500) });
@@ -78,26 +113,24 @@
             }
         });
 
-        // Fallback: ถ้ายังไม่เจอ ลองหาจาก .activity-content โดยตรง
+        // Fallback Activities: ถ้าไม่เจอ H4 ลองหาจาก text content ในหน้า
         if (activities.length === 0) {
-            const allActivityContent = document.querySelectorAll(".activity-content");
-            allActivityContent.forEach((content, idx) => {
-                if (idx >= 15) return;
-                const cardTexts = content.querySelectorAll("p.title.card-text, .card-text");
-                cardTexts.forEach((p) => {
-                    const itemText = p.innerText.trim();
-                    if (itemText && itemText.length > 5 && itemText.length < 500) {
-                        activities.push({ type: "activity", text: itemText });
-                    }
-                });
-            });
+            // บาง theme อาจจะไม่ได้ใช้ h4
+            // ลองหา div ที่มี text "Next Activities"
+            // (ส่วนนี้อาจจะยากหน่อยถ้าไม่มี selector ชัดเจน ไว้ก่อน)
         }
 
         console.log(`${LOG_PREFIX} 📋 ดึง Activities ได้: ${activities.length} รายการ`);
 
         let contractPeriod = durationText.split(" ")[0].trim();
 
-        // สร้าง deal object
+        // 5. ตรวจสอบข้อมูลก่อนบันทึก
+        if (!dealId && !companyName) {
+            console.warn(`${LOG_PREFIX} ⚠️ ไม่พบข้อมูล Deal ID หรือ Company Name`);
+            alert("⚠️ ไม่พบข้อมูลดีล (โครงสร้างเว็บอาจเปลี่ยน)\nกรุณาลองรีเฟรชหน้าเว็บ หรือแจ้งผู้พัฒนา");
+            return;
+        }
+
         const newDeal = {
             id: dealId,
             company: companyName,
@@ -108,29 +141,18 @@
             savedAt: Date.now()
         };
 
-        // ตรวจสอบว่าดึงข้อมูลได้หรือไม่
-        if (!dealId && !companyName) {
-            console.warn(`${LOG_PREFIX} ⚠️ ไม่พบข้อมูลดีลในหน้านี้`);
-            alert("⚠️ ไม่พบข้อมูลดีลในหน้านี้\nกรุณาตรวจสอบว่าอยู่ในหน้า Deal Detail");
-            return;
-        }
+        console.log(`${LOG_PREFIX} 📦 ข้อมูลที่ดึงได้:`, newDeal);
 
-        console.log(`${LOG_PREFIX} 📦 ข้อมูลที่ดึงได้:`, {
-            dealId,
-            company: companyName,
-            type: dealType,
-            owner: ownerName,
-            period: contractPeriod,
-            activitiesCount: activities.length
-        });
-
-        // บันทึก dealData และเพิ่มเข้า dealHistory
+        // 6. บันทึกลง Storage Call
         chrome.storage.local.get(["dealHistory"], function (data) {
             let history = data.dealHistory || [];
 
             // ลบ deal ซ้ำ (ถ้ามี ID เดียวกัน)
             if (dealId) {
                 history = history.filter((h) => h.id !== dealId);
+            } else {
+                // ถ้าไม่มี DealID (อาจจะดึงไม่ได้) ให้ลบที่ชื่อซ้ำแทน
+                history = history.filter((h) => h.company !== companyName);
             }
 
             // เพิ่ม deal ใหม่ไว้หน้าสุด
@@ -144,19 +166,12 @@
             // บันทึกลง storage
             chrome.storage.local.set(
                 {
-                    dealData: {
-                        id: dealId,
-                        company: companyName,
-                        period: contractPeriod,
-                        type: dealType,
-                        owner: ownerName
-                    },
+                    dealData: newDeal, // ส่งทั้ง object ไปเลย
                     dealHistory: history
                 },
                 function () {
-                    console.log(`${LOG_PREFIX} ✅ บันทึกข้อมูลดีลและ history เรียบร้อย`);
+                    console.log(`${LOG_PREFIX} ✅ บันทึกข้อมูลดีลเรียบร้อย`);
                     console.log(`${LOG_PREFIX} 🌐 เปิด CostSheet...`);
-                    // TODO: [REFACTOR] Move URL to constants.js
                     window.open("https://costsheet.uih.co.th/CreateDoc.aspx", "_blank");
                 }
             );
