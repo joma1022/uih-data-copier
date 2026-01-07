@@ -14,7 +14,8 @@ let CFG = {
     popupPollDelay: 150,
     popupTimeout: 8000,
     addPollDelay: 150,
-    addTimeout: 10000
+    addTimeout: 10000,
+    defaultDuration: 12  // default Default Duration
 };
 
 let customerSearchStarted = false;
@@ -58,7 +59,8 @@ function sanitizeConfig(raw) {
         popupPollDelay: clamp(base.popupPollDelay, 50, 5000, CFG.popupPollDelay),
         popupTimeout: clamp(base.popupTimeout, 1000, 30000, CFG.popupTimeout),
         addPollDelay: clamp(base.addPollDelay, 50, 5000, CFG.addPollDelay),
-        addTimeout: clamp(base.addTimeout, 1000, 30000, CFG.addTimeout)
+        addTimeout: clamp(base.addTimeout, 1000, 30000, CFG.addTimeout),
+        defaultDuration: clamp(base.defaultDuration, 0, 120, CFG.defaultDuration)
     };
 }
 
@@ -506,10 +508,19 @@ function runWriterProcess() {
             }
         }
 
-        if (deal.period && deal.period !== "0") {
+        // Logic: ถ้า period เป็น 0 หรือว่าง ให้ใช้ค่า defaultDuration (ถ้ามี)
+        let periodToFill = deal.period;
+        if (!periodToFill || periodToFill === "0" || periodToFill === "00") {
+            if (CFG.defaultDuration && CFG.defaultDuration > 0) {
+                console.log(`${CSW_LOG} ℹ️ Period is 0, using default duration: ${CFG.defaultDuration}`);
+                periodToFill = String(CFG.defaultDuration);
+            }
+        }
+
+        if (periodToFill && periodToFill !== "0") {
             const el = safeGet("cphContent_txtContractPeriod", "Contract Period");
-            if (el && el.value !== deal.period) {
-                el.value = deal.period;
+            if (el && el.value !== periodToFill) {
+                el.value = periodToFill;
                 el.dispatchEvent(new Event("input", { bubbles: true }));
                 el.dispatchEvent(new Event("change", { bubbles: true }));
             }

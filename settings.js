@@ -60,6 +60,10 @@ document.addEventListener("DOMContentLoaded", () => {
             if (addPollDelay) addPollDelay.value = cfg.addPollDelay ?? 200;
             if (addTimeout) addTimeout.value = cfg.addTimeout ?? 10000;
 
+            // New: Default Duration
+            const defaultDuration = document.getElementById("defaultDuration");
+            if (defaultDuration) defaultDuration.value = cfg.defaultDuration ?? 12;
+
             // Auto-Delete Settings
             const autoDelete = data.autoDeleteSettings || {};
             const autoDeleteEnabled = document.getElementById("autoDeleteEnabled");
@@ -113,7 +117,9 @@ document.addEventListener("DOMContentLoaded", () => {
             popupPollDelay: popupPollDelay ? parseInt(popupPollDelay.value) : 200,
             popupTimeout: popupTimeout ? parseInt(popupTimeout.value) : 8000,
             addPollDelay: addPollDelay ? parseInt(addPollDelay.value) : 200,
-            addTimeout: addTimeout ? parseInt(addTimeout.value) : 10000
+            addPollDelay: addPollDelay ? parseInt(addPollDelay.value) : 200,
+            addTimeout: addTimeout ? parseInt(addTimeout.value) : 10000,
+            defaultDuration: document.getElementById("defaultDuration") ? parseInt(document.getElementById("defaultDuration").value) : 12
         };
 
         // Auto-Delete Settings
