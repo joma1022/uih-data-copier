@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function loadSettings() {
         chrome.storage.local.get([
             "aiSettings",
-            "costsheetWriterConfig",
+            "settings",
             "autoDeleteSettings"
         ], (data) => {
             // AI Settings
@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
             updateSettingsVisibility();
 
             // CostSheet Writer Config
-            const cfg = data.costsheetWriterConfig || {};
+            const cfg = data.settings || {};
             const delayMode = document.getElementById("delayMode");
             const startDelay = document.getElementById("startDelay");
             const clickDelay = document.getElementById("clickDelay");
@@ -107,7 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
             groqModel: groqModel ? groqModel.value : "llama-3.1-8b-instant"
         };
 
-        const costsheetWriterConfig = {
+        const settings = {
             delayMode: delayMode ? delayMode.value : "auto",
             startDelay: startDelay ? parseInt(startDelay.value) : 1000,
             clickDelay: clickDelay ? parseInt(clickDelay.value) : 200,
@@ -116,7 +116,6 @@ document.addEventListener("DOMContentLoaded", () => {
             resultWait: resultWait ? parseInt(resultWait.value) : 500,
             popupPollDelay: popupPollDelay ? parseInt(popupPollDelay.value) : 200,
             popupTimeout: popupTimeout ? parseInt(popupTimeout.value) : 8000,
-            addPollDelay: addPollDelay ? parseInt(addPollDelay.value) : 200,
             addPollDelay: addPollDelay ? parseInt(addPollDelay.value) : 200,
             addTimeout: addTimeout ? parseInt(addTimeout.value) : 10000,
             defaultDuration: document.getElementById("defaultDuration") ? parseInt(document.getElementById("defaultDuration").value) : 12
@@ -132,7 +131,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         chrome.storage.local.set({
             aiSettings,
-            costsheetWriterConfig,
+            settings,
             autoDeleteSettings
         }, () => {
             if (status) {

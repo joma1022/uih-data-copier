@@ -2,6 +2,18 @@
 
 All notable changes to UIH Data Copier extension will be documented in this file.
 
+## [5.5] - 2026-01-09
+
+### Fixed
+- **Settings Key Mismatch** - แก้ไข `settings.js` ที่บันทึก config เป็น `costsheetWriterConfig` แต่ `costsheet_writer.js` อ่านจาก `settings` ทำให้ค่า config ไม่ถูกส่งต่อ
+- **Duplicate Code** - ลบบรรทัดซ้ำ `addPollDelay` ใน `settings.js`
+- **Undefined Error** - เพิ่ม defensive checks ใน `costsheet_writer.js` เพื่อป้องกัน error `Cannot read properties of undefined` เมื่อข้อมูล deal ไม่ครบ
+
+### Improved
+- **Debug Logging** - เพิ่ม log แจ้งเตือนเมื่อข้อมูล company ว่างเพื่อช่วย debug ปัญหา
+
+---
+
 ## [4.2] - 2026-01-07
 
 ### Added

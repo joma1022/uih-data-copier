@@ -484,32 +484,44 @@ function runWriterProcess() {
             return;
         }
 
-        const deal = result.dealData;
+        const deal = result.dealData || {};
         CFG = sanitizeConfig(result.settings);
 
+        // Defensive: ตรวจสอบข้อมูล deal
+        const dealId = deal.id || "";
+        const dealCompany = deal.company || "";
+        const dealType = deal.type || "";
+        const dealOwner = deal.owner || "";
+        const dealPeriod = deal.period || "";
+
         console.log(`${CSW_LOG} 📦 เริ่มกรอกข้อมูล:`, {
-            dealId: deal.id,
-            company: deal.company,
-            type: deal.type,
-            owner: deal.owner,
-            period: deal.period
+            dealId: dealId,
+            company: dealCompany,
+            type: dealType,
+            owner: dealOwner,
+            period: dealPeriod
         });
         console.log(`${CSW_LOG} ⚙️ CFG:`, CFG);
+
+        // Debug: แจ้งเตือนถ้าข้อมูลสำคัญหายไป
+        if (!dealCompany) {
+            console.warn(`${CSW_LOG} ⚠️ ไม่มีข้อมูล company ใน dealData!`);
+        }
 
         const retryDelay = CFG.dropdownDelay * 2;
 
         // 1) Text fields
-        if (deal.id) {
+        if (dealId) {
             const el = safeGet("cphContent_txtDealNo", "Deal No");
-            if (el && el.value !== deal.id) {
-                el.value = deal.id;
+            if (el && el.value !== dealId) {
+                el.value = dealId;
                 el.dispatchEvent(new Event("input", { bubbles: true }));
                 el.dispatchEvent(new Event("change", { bubbles: true }));
             }
         }
 
         // Logic: ถ้า period เป็น 0 หรือว่าง ให้ใช้ค่า defaultDuration (ถ้ามี)
-        let periodToFill = deal.period;
+        let periodToFill = dealPeriod;
         if (!periodToFill || periodToFill === "0" || periodToFill === "00") {
             if (CFG.defaultDuration && CFG.defaultDuration > 0) {
                 console.log(`${CSW_LOG} ℹ️ Period is 0, using default duration: ${CFG.defaultDuration}`);
@@ -546,10 +558,10 @@ function runWriterProcess() {
         }
 
         // 2) Dropdowns + Smart Retry
-        if (deal.owner) {
+        if (dealOwner) {
             const res = checkAndSetDropdown(
                 "cphContent_ddlSalename",
-                deal.owner,
+                dealOwner,
                 "Sale Name"
             );
             if (!res.hasOptions) {
@@ -568,10 +580,10 @@ function runWriterProcess() {
             }
         }
 
-        if (deal.type) {
+        if (dealType) {
             const res = checkAndSetDropdown(
                 "cphContent_ddlDocType",
-                deal.type,
+                dealType,
                 "Deal Type"
             );
             if (!res.hasOptions) {
@@ -603,8 +615,8 @@ function runWriterProcess() {
         }
 
         // 4) Auto customer
-        if (deal.company) {
-            startCustomerSearchFlow(deal.company.trim(), 0, 2);
+        if (dealCompany) {
+            startCustomerSearchFlow(dealCompany.trim(), 0, 2);
         } else {
             console.log("ℹ️ deal.company ว่าง จึงไม่ auto ค้นหาลูกค้า");
         }
